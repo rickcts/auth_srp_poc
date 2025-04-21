@@ -1,7 +1,6 @@
 package service
 
 import (
-	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -73,7 +72,7 @@ func (s *AuthService) ComputeB(req models.AuthStep1Request) (*models.AuthStep1Re
 		return nil, fmt.Errorf("invalid salt hex format: %w", err)
 	}
 
-	srp, err := srp.NewSRP(s.srpGroup, sha512.New, nil)
+	srp, err := srp.NewSRP(s.srpGroup, s.cfg.HashingAlgorithm.New, nil)
 	if err != nil {
 		log.Printf("[AuthService.ComputeB] ERROR: Failed to create SRP instance for user '%s': %v", req.Username, err)
 		return nil, fmt.Errorf("failed to create SRP instance: %w", err)

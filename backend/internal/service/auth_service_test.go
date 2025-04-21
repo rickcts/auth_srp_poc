@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
@@ -24,15 +25,16 @@ func createTestConfig() *config.Config {
 	// Use a known group for deterministic tests if possible, or handle variability
 	// Using a smaller group for faster tests might be an option if logic allows
 	return &config.Config{
-		JWTSecret:       "test-secret",
-		SRPGroup:        "rfc5054.1024",
-		AuthStateExpiry: time.Now().Add(5 * time.Minute), // Set expiry in the future
+		JWTSecret:        "test-secret",
+		SRPGroup:         "rfc5054.4096",
+		AuthStateExpiry:  time.Now().Add(5 * time.Minute), // Set expiry in the future
+		HashingAlgorithm: crypto.SHA512,
 	}
 }
 
 // Helper to generate valid SRP credentials for testing
 func generateTestCreds(username, password string, cfg *config.Config) (saltHex, verifierHex string, err error) {
-	srpInstance, err := srp.NewSRP("rfc5054.1024", sha512.New, nil) // Match hash used in service
+	srpInstance, err := srp.NewSRP(cfg.SRPGroup, cfg.HashingAlgorithm.New, nil) // Match hash used in service
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create SRP instance: %w", err)
 	}
