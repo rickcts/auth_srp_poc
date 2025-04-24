@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto"
 	"crypto/sha512"
 	"encoding/hex"
@@ -60,7 +61,7 @@ func TestAuthService_Register(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("CreateUserCreds", req.Username, req.Salt, req.Verifier).Return(nil).Once()
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		err := authService.Register(req)
+		err := authService.Register(context.Background(), req)
 
 		require.NoError(t, err)
 		mockUserRepo.AssertExpectations(t)
@@ -70,7 +71,7 @@ func TestAuthService_Register(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("CreateUserCreds", req.Username, req.Salt, req.Verifier).Return(repository.ErrUserExists).Once()
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		err := authService.Register(req)
+		err := authService.Register(context.Background(), req)
 
 		require.Error(t, err)
 		// Check for the specific error message the service returns, not the repo error directly
@@ -83,7 +84,7 @@ func TestAuthService_Register(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("CreateUserCreds", req.Username, req.Salt, req.Verifier).Return(repoErr).Once()
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		err := authService.Register(req)
+		err := authService.Register(context.Background(), req)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to store user credentials")
@@ -94,7 +95,7 @@ func TestAuthService_Register(t *testing.T) {
 		emptyReq := models.RegisterRequest{Username: "", Salt: "", Verifier: ""}
 		mockUserRepo := new(mocks.MockUserRepository)
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		err := authService.Register(emptyReq)
+		err := authService.Register(context.Background(), emptyReq)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "username, salt, and verifier cannot be empty")
 		// No mock calls expected
@@ -121,7 +122,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockStateRepo.On("StoreAuthState", username, mock.AnythingOfType("models.AuthSessionState")).Return(nil).Once()
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		resp, err := authService.ComputeB(req)
+		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -140,7 +141,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo.On("GetUserCredsByUsername", username).Return("", "", repository.ErrUserNotFound).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		resp, err := authService.ComputeB(req)
+		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -156,7 +157,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo.On("GetUserCredsByUsername", username).Return(saltHex, "invalid-hex", nil).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		resp, err := authService.ComputeB(req)
+		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -171,7 +172,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo.On("GetUserCredsByUsername", username).Return("invalid-hex", verifierHex, nil).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		resp, err := authService.ComputeB(req)
+		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -187,7 +188,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo.On("GetUserCredsByUsername", username).Return("", "", repoErr).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
-		resp, err := authService.ComputeB(req)
+		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -206,7 +207,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo.On("GetUserCredsByUsername", username).Return(saltHex, verifierHex, nil).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
 		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, badCfg)
-		resp, err := authService.ComputeB(req)
+		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -304,7 +305,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockTokenSvc.On("GenerateToken", data.username).Return(expectedToken, nil).Once()
 
 		// Execute
-		resp, err := authService.VerifyClientProof(data.req)
+		resp, err := authService.VerifyClientProof(context.Background(), data.req)
 
 		// Assert
 		require.NoError(t, err)
@@ -333,7 +334,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Maybe() // Maybe called depending on exact error handling path
 
 		// Execute
-		resp, err := authService.VerifyClientProof(data.req)
+		resp, err := authService.VerifyClientProof(context.Background(), data.req)
 
 		// Assert
 		require.Error(t, err)
@@ -362,7 +363,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Once() // Should be called on failure path too
 
 		// Execute
-		resp, err := authService.VerifyClientProof(badReq)
+		resp, err := authService.VerifyClientProof(context.Background(), badReq)
 
 		// Assert
 		require.Error(t, err)
@@ -393,7 +394,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Maybe()
 
 		// Execute
-		resp, err := authService.VerifyClientProof(badReq)
+		resp, err := authService.VerifyClientProof(context.Background(), badReq)
 
 		// Assert
 		require.Error(t, err)
@@ -423,7 +424,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockTokenSvc.On("GenerateToken", data.username).Return("", tokenErr).Once()
 
 		// Execute
-		resp, err := authService.VerifyClientProof(data.req)
+		resp, err := authService.VerifyClientProof(context.Background(), data.req)
 
 		// Assert
 		require.Error(t, err)
@@ -452,7 +453,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Maybe()
 
 		// Execute
-		resp, err := authService.VerifyClientProof(badReq)
+		resp, err := authService.VerifyClientProof(context.Background(), badReq)
 
 		// Assert
 		require.Error(t, err)
@@ -478,7 +479,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Maybe()
 
 		// Execute
-		resp, err := authService.VerifyClientProof(data.req)
+		resp, err := authService.VerifyClientProof(context.Background(), data.req)
 
 		// Assert
 		require.Error(t, err)
@@ -506,7 +507,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockTokenSvc.On("GenerateToken", data.username).Return(expectedToken, nil).Once() // Token generation still happens
 
 		// Execute
-		resp, err := authService.VerifyClientProof(data.req)
+		resp, err := authService.VerifyClientProof(context.Background(), data.req)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)

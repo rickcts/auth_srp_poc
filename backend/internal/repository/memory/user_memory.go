@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -20,7 +21,7 @@ func NewMemoryUserRepository() repository.UserRepository {
 	}
 }
 
-func (r *MemoryUserRepository) CreateUserCreds(username, saltHex, verifierHex string) error {
+func (r *MemoryUserRepository) CreateUserCreds(ctx context.Context, username, saltHex, verifierHex string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -37,7 +38,7 @@ func (r *MemoryUserRepository) CreateUserCreds(username, saltHex, verifierHex st
 	return nil
 }
 
-func (r *MemoryUserRepository) GetUserCredsByUsername(username string) (string, string, error) {
+func (r *MemoryUserRepository) GetUserCredsByUsername(ctx context.Context, username string) (string, string, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 

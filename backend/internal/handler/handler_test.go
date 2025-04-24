@@ -29,7 +29,7 @@ func setupTestApp(mockAuthService *mocks.MockAuthService) *fiber.App {
 	return app
 }
 
-func performRequest(app *fiber.App, method, path string, body interface{}) *http.Response {
+func performRequest(app *fiber.App, method, path string, body any) *http.Response {
 	var reqBody io.Reader = nil
 	if body != nil {
 		jsonData, _ := json.Marshal(body)

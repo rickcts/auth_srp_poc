@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/rickcts/srp/internal/config"
 	"github.com/rickcts/srp/internal/models"
 	"github.com/rickcts/srp/internal/repository"
@@ -26,9 +28,9 @@ type TokenGenerator interface {
 
 type AuthGenerator interface {
 	// Register handles user registration
-	Register(req models.RegisterRequest) error
+	Register(ctx context.Context, req models.RegisterRequest) error
 	// ComputeB handles SRP step 1 (Server -> Client: salt, B)
-	ComputeB(req models.AuthStep1Request) (*models.AuthStep1Response, error)
+	ComputeB(ctx context.Context, req models.AuthStep1Request) (*models.AuthStep1Response, error)
 	// VerifyClientProof handles SRP step 2 (Client -> Server: A, M1) and returns Step 3 info (Server -> Client: M2)
-	VerifyClientProof(req models.AuthStep2Request) (*models.AuthStep3Response, error)
+	VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error)
 }

@@ -28,7 +28,9 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
 	}
 
-	err := h.authService.Register(*req)
+	ctx := c.UserContext()
+
+	err := h.authService.Register(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserExists) {
 			return c.Status(http.StatusConflict).JSON(models.ErrorResponse{Error: "Username already exists"})
@@ -47,7 +49,9 @@ func (h *AuthHandler) AuthStep1(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
 	}
 
-	resp, err := h.authService.ComputeB(*req)
+	ctx := c.UserContext()
+
+	resp, err := h.authService.ComputeB(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return c.Status(http.StatusNotFound).JSON(models.ErrorResponse{Error: "User not found"})
@@ -66,7 +70,9 @@ func (h *AuthHandler) AuthStep2(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
 	}
 
-	resp, err := h.authService.VerifyClientProof(*req)
+	ctx := c.UserContext()
+
+	resp, err := h.authService.VerifyClientProof(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrStateNotFound) {
 			return c.Status(http.StatusUnauthorized).JSON(models.ErrorResponse{Error: "Authentication session expired or invalid"})

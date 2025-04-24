@@ -1,17 +1,22 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/rickcts/srp/ent"
 	"github.com/rickcts/srp/internal/config"
 	"github.com/rickcts/srp/internal/handler"
+	ent_repo "github.com/rickcts/srp/internal/repository/ent"
 	"github.com/rickcts/srp/internal/repository/memory"
 	"github.com/rickcts/srp/internal/router"
 	"github.com/rickcts/srp/internal/server"
 	"github.com/rickcts/srp/internal/service"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -20,7 +25,17 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	userRepo := memory.NewMemoryUserRepository()
+	client, err := ent.Open("postgres", "host=<host> port=<port> user=<user> dbname=<database> password=<pass>")
+	if err != nil {
+		log.Fatalf("failed opening connection to postgres: %v", err)
+	}
+	defer client.Close()
+	// Run the auto migration tool.
+	if err := client.Schema.Create(context.Background()); err != nil {
+		log.Fatalf("failed creating schema resources: %v", err)
+	}
+
+	userRepo := ent_repo.NewEntUserRepository(client)
 	stateRepo := memory.NewMemoryStateRepository()
 
 	tokenService := service.NewTokenService(cfg.JWTSecret)

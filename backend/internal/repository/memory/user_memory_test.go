@@ -2,6 +2,7 @@
 package memory
 
 import (
+	"context"
 	"testing"
 
 	"github.com/rickcts/srp/internal/repository"
@@ -18,23 +19,23 @@ func TestMemoryUserRepository(t *testing.T) {
 	verifier := "someverifier"
 
 	t.Run("CreateAndGetUser", func(t *testing.T) {
-		err := repo.CreateUserCreds(username, salt, verifier)
+		err := repo.CreateUserCreds(context.Background(), username, salt, verifier)
 		require.NoError(t, err)
 
-		retSalt, retVerifier, err := repo.GetUserCredsByUsername(username)
+		retSalt, retVerifier, err := repo.GetUserCredsByUsername(context.Background(), username)
 		require.NoError(t, err)
 		assert.Equal(t, salt, retSalt)
 		assert.Equal(t, verifier, retVerifier)
 	})
 
 	t.Run("GetUserNotFound", func(t *testing.T) {
-		_, _, err := repo.GetUserCredsByUsername("nonexistent")
+		_, _, err := repo.GetUserCredsByUsername(context.Background(), "nonexistent")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repository.ErrUserNotFound)
 	})
 
 	t.Run("CreateUserExists", func(t *testing.T) {
-		err := repo.CreateUserCreds(username, "anothersalt", "anotherverifier")
+		err := repo.CreateUserCreds(context.Background(), username, "anothersalt", "anotherverifier")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repository.ErrUserExists)
 	})

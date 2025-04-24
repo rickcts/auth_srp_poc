@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	// Server port
 	Port      string
 	JWTSecret string
 	// The set of supported groups are:
@@ -29,7 +30,8 @@ type Config struct {
 	//		stanford.6144
 	//		stanford.8192
 	// Default to rfc5054.4096
-	SRPGroup         string
+	SRPGroup string
+	// Set the expiry time between srp exchange
 	AuthStateExpiry  time.Time
 	HashingAlgorithm crypto.Hash
 }

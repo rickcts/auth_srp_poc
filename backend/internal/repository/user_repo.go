@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -10,11 +11,11 @@ type UserRepository interface {
 	// for a new user identified by username.
 	// It should return ErrUserExists if the username is already taken,
 	// or another error if the storage operation fails.
-	CreateUserCreds(username, saltHex, verifierHex string) error
+	CreateUserCreds(ctx context.Context, username, saltHex, verifierHex string) error
 
 	// GetUserCredsByUsername retrieves the hex-encoded salt and verifier for a given username.
 	// It should return ErrUserNotFound if the user does not exist.
-	GetUserCredsByUsername(username string) (saltHex, verifierHex string, err error)
+	GetUserCredsByUsername(ctx context.Context, username string) (saltHex, verifierHex string, err error)
 }
 
 // Common errors

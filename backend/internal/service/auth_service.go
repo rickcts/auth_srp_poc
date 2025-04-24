@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -27,7 +28,7 @@ func NewAuthService(userRepo repository.UserRepository, stateRepo repository.Sta
 }
 
 // Register handles user registration
-func (s *AuthService) Register(req models.RegisterRequest) error {
+func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) error {
 	if req.Username == "" || req.Salt == "" || req.Verifier == "" {
 		log.Printf("[AuthService.Register] ERROR: Missing required fields for user '%s'", req.Username)
 		return fmt.Errorf("username, salt, and verifier cannot be empty")
@@ -35,7 +36,7 @@ func (s *AuthService) Register(req models.RegisterRequest) error {
 
 	log.Printf("[AuthService.Register] Attempting to register user '%s' with Salt: %s, Verifier: %s", req.Username, req.Salt, req.Verifier)
 
-	err := s.userRepo.CreateUserCreds(req.Username, req.Salt, req.Verifier)
+	err := s.userRepo.CreateUserCreds(ctx, req.Username, req.Salt, req.Verifier)
 	if err != nil {
 		if err == repository.ErrUserExists {
 			log.Printf("[AuthService.Register] WARN: User '%s' already exists", req.Username)
@@ -49,11 +50,11 @@ func (s *AuthService) Register(req models.RegisterRequest) error {
 }
 
 // ComputeB handles SRP step 1 (Server -> Client: salt, B)
-func (s *AuthService) ComputeB(req models.AuthStep1Request) (*models.AuthStep1Response, error) {
+func (s *AuthService) ComputeB(ctx context.Context, req models.AuthStep1Request) (*models.AuthStep1Response, error) {
 	log.Printf("[AuthService.ComputeB] Received Step 1 request for user '%s'", req.Username)
 
 	// Retrieve user credentials
-	saltHex, verifierHex, err := s.userRepo.GetUserCredsByUsername(req.Username)
+	saltHex, verifierHex, err := s.userRepo.GetUserCredsByUsername(ctx, req.Username)
 	if err != nil {
 		log.Printf("[AuthService.ComputeB] ERROR: Failed to get credentials for user '%s': %v", req.Username, err)
 		return nil, fmt.Errorf("failed to get user credentials: %w", err) // Could be ErrUserNotFound
@@ -101,7 +102,7 @@ func (s *AuthService) ComputeB(req models.AuthStep1Request) (*models.AuthStep1Re
 }
 
 // VerifyClientProof handles SRP step 2 (Client -> Server: A, M1) and returns Step 3 info (Server -> Client: M2)
-func (s *AuthService) VerifyClientProof(req models.AuthStep2Request) (*models.AuthStep3Response, error) {
+func (s *AuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error) {
 	log.Printf("[AuthService.VerifyClientProof] Received Step 2 request for user '%s': ClientA=%s, ClientProofM1=%s",
 		req.Username, req.ClientA, req.ClientProofM1)
 
