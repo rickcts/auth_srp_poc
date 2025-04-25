@@ -105,16 +105,6 @@ func UserIDNotIn(vs ...int) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldNotIn(FieldUserID, vs...))
 }
 
-// UserIDIsNil applies the IsNil predicate on the "user_id" field.
-func UserIDIsNil() predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldIsNull(FieldUserID))
-}
-
-// UserIDNotNil applies the NotNil predicate on the "user_id" field.
-func UserIDNotNil() predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldNotNull(FieldUserID))
-}
-
 // AuthProviderEQ applies the EQ predicate on the "auth_provider" field.
 func AuthProviderEQ(v int64) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldEQ(FieldAuthProvider, v))

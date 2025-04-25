@@ -14,7 +14,7 @@ type UserMFA struct {
 // Fields of the UserMFA.
 func (UserMFA) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Optional(),
+		field.Int("user_id"),
 		field.String("method"),
 		field.String("params").Optional(),
 	}
@@ -26,6 +26,7 @@ func (UserMFA) Edges() []ent.Edge {
 		edge.From("user", User.Type).
 			Ref("userMFA").
 			Unique().
+			Required().
 			Field("user_id"),
 	}
 }

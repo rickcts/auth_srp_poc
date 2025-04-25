@@ -818,22 +818,9 @@ func (m *UserAuthMutation) OldUserID(ctx context.Context) (v int, err error) {
 	return oldValue.UserID, nil
 }
 
-// ClearUserID clears the value of the "user_id" field.
-func (m *UserAuthMutation) ClearUserID() {
-	m.user = nil
-	m.clearedFields[userauth.FieldUserID] = struct{}{}
-}
-
-// UserIDCleared returns if the "user_id" field was cleared in this mutation.
-func (m *UserAuthMutation) UserIDCleared() bool {
-	_, ok := m.clearedFields[userauth.FieldUserID]
-	return ok
-}
-
 // ResetUserID resets all changes to the "user_id" field.
 func (m *UserAuthMutation) ResetUserID() {
 	m.user = nil
-	delete(m.clearedFields, userauth.FieldUserID)
 }
 
 // SetAuthExtras sets the "auth_extras" field.
@@ -952,7 +939,7 @@ func (m *UserAuthMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *UserAuthMutation) UserCleared() bool {
-	return m.UserIDCleared() || m.cleareduser
+	return m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -1120,11 +1107,7 @@ func (m *UserAuthMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *UserAuthMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(userauth.FieldUserID) {
-		fields = append(fields, userauth.FieldUserID)
-	}
-	return fields
+	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1137,11 +1120,6 @@ func (m *UserAuthMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *UserAuthMutation) ClearField(name string) error {
-	switch name {
-	case userauth.FieldUserID:
-		m.ClearUserID()
-		return nil
-	}
 	return fmt.Errorf("unknown UserAuth nullable field %s", name)
 }
 
@@ -1390,22 +1368,9 @@ func (m *UserAuthEventMutation) OldUserID(ctx context.Context) (v int, err error
 	return oldValue.UserID, nil
 }
 
-// ClearUserID clears the value of the "user_id" field.
-func (m *UserAuthEventMutation) ClearUserID() {
-	m.user = nil
-	m.clearedFields[userauthevent.FieldUserID] = struct{}{}
-}
-
-// UserIDCleared returns if the "user_id" field was cleared in this mutation.
-func (m *UserAuthEventMutation) UserIDCleared() bool {
-	_, ok := m.clearedFields[userauthevent.FieldUserID]
-	return ok
-}
-
 // ResetUserID resets all changes to the "user_id" field.
 func (m *UserAuthEventMutation) ResetUserID() {
 	m.user = nil
-	delete(m.clearedFields, userauthevent.FieldUserID)
 }
 
 // SetAuthProvider sets the "auth_provider" field.
@@ -1656,7 +1621,7 @@ func (m *UserAuthEventMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *UserAuthEventMutation) UserCleared() bool {
-	return m.UserIDCleared() || m.cleareduser
+	return m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -1888,11 +1853,7 @@ func (m *UserAuthEventMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *UserAuthEventMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(userauthevent.FieldUserID) {
-		fields = append(fields, userauthevent.FieldUserID)
-	}
-	return fields
+	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1905,11 +1866,6 @@ func (m *UserAuthEventMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *UserAuthEventMutation) ClearField(name string) error {
-	switch name {
-	case userauthevent.FieldUserID:
-		m.ClearUserID()
-		return nil
-	}
 	return fmt.Errorf("unknown UserAuthEvent nullable field %s", name)
 }
 
@@ -2158,22 +2114,9 @@ func (m *UserMFAMutation) OldUserID(ctx context.Context) (v int, err error) {
 	return oldValue.UserID, nil
 }
 
-// ClearUserID clears the value of the "user_id" field.
-func (m *UserMFAMutation) ClearUserID() {
-	m.user = nil
-	m.clearedFields[usermfa.FieldUserID] = struct{}{}
-}
-
-// UserIDCleared returns if the "user_id" field was cleared in this mutation.
-func (m *UserMFAMutation) UserIDCleared() bool {
-	_, ok := m.clearedFields[usermfa.FieldUserID]
-	return ok
-}
-
 // ResetUserID resets all changes to the "user_id" field.
 func (m *UserMFAMutation) ResetUserID() {
 	m.user = nil
-	delete(m.clearedFields, usermfa.FieldUserID)
 }
 
 // SetMethod sets the "method" field.
@@ -2269,7 +2212,7 @@ func (m *UserMFAMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *UserMFAMutation) UserCleared() bool {
-	return m.UserIDCleared() || m.cleareduser
+	return m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -2424,9 +2367,6 @@ func (m *UserMFAMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *UserMFAMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(usermfa.FieldUserID) {
-		fields = append(fields, usermfa.FieldUserID)
-	}
 	if m.FieldCleared(usermfa.FieldParams) {
 		fields = append(fields, usermfa.FieldParams)
 	}
@@ -2444,9 +2384,6 @@ func (m *UserMFAMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *UserMFAMutation) ClearField(name string) error {
 	switch name {
-	case usermfa.FieldUserID:
-		m.ClearUserID()
-		return nil
 	case usermfa.FieldParams:
 		m.ClearParams()
 		return nil

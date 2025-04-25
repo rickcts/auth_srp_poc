@@ -42,12 +42,6 @@ func (uau *UserAuthUpdate) SetNillableUserID(i *int) *UserAuthUpdate {
 	return uau
 }
 
-// ClearUserID clears the value of the "user_id" field.
-func (uau *UserAuthUpdate) ClearUserID() *UserAuthUpdate {
-	uau.mutation.ClearUserID()
-	return uau
-}
-
 // SetAuthExtras sets the "auth_extras" field.
 func (uau *UserAuthUpdate) SetAuthExtras(s string) *UserAuthUpdate {
 	uau.mutation.SetAuthExtras(s)
@@ -133,7 +127,18 @@ func (uau *UserAuthUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uau *UserAuthUpdate) check() error {
+	if uau.mutation.UserCleared() && len(uau.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserAuth.user"`)
+	}
+	return nil
+}
+
 func (uau *UserAuthUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := uau.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(userauth.Table, userauth.Columns, sqlgraph.NewFieldSpec(userauth.FieldID, field.TypeInt))
 	if ps := uau.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -211,12 +216,6 @@ func (uauo *UserAuthUpdateOne) SetNillableUserID(i *int) *UserAuthUpdateOne {
 	if i != nil {
 		uauo.SetUserID(*i)
 	}
-	return uauo
-}
-
-// ClearUserID clears the value of the "user_id" field.
-func (uauo *UserAuthUpdateOne) ClearUserID() *UserAuthUpdateOne {
-	uauo.mutation.ClearUserID()
 	return uauo
 }
 
@@ -318,7 +317,18 @@ func (uauo *UserAuthUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uauo *UserAuthUpdateOne) check() error {
+	if uauo.mutation.UserCleared() && len(uauo.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserAuth.user"`)
+	}
+	return nil
+}
+
 func (uauo *UserAuthUpdateOne) sqlSave(ctx context.Context) (_node *UserAuth, err error) {
+	if err := uauo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(userauth.Table, userauth.Columns, sqlgraph.NewFieldSpec(userauth.FieldID, field.TypeInt))
 	id, ok := uauo.mutation.ID()
 	if !ok {

@@ -14,7 +14,7 @@ type UserAuthEvent struct {
 // Fields of the UserAuth.
 func (UserAuthEvent) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Optional(),
+		field.Int("user_id"),
 		field.Int64("auth_provider"),
 		field.String("host"),
 		field.Time("timestamp"),
@@ -29,6 +29,7 @@ func (UserAuthEvent) Edges() []ent.Edge {
 		edge.From("user", User.Type).
 			Ref("userAuthEvent").
 			Unique().
+			Required().
 			Field("user_id"),
 	}
 }

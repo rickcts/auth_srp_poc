@@ -26,14 +26,6 @@ func (uac *UserAuthCreate) SetUserID(i int) *UserAuthCreate {
 	return uac
 }
 
-// SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (uac *UserAuthCreate) SetNillableUserID(i *int) *UserAuthCreate {
-	if i != nil {
-		uac.SetUserID(*i)
-	}
-	return uac
-}
-
 // SetAuthExtras sets the "auth_extras" field.
 func (uac *UserAuthCreate) SetAuthExtras(s string) *UserAuthCreate {
 	uac.mutation.SetAuthExtras(s)
@@ -91,6 +83,9 @@ func (uac *UserAuthCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (uac *UserAuthCreate) check() error {
+	if _, ok := uac.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserAuth.user_id"`)}
+	}
 	if _, ok := uac.mutation.AuthExtras(); !ok {
 		return &ValidationError{Name: "auth_extras", err: errors.New(`ent: missing required field "UserAuth.auth_extras"`)}
 	}
@@ -99,6 +94,9 @@ func (uac *UserAuthCreate) check() error {
 	}
 	if _, ok := uac.mutation.AuthID(); !ok {
 		return &ValidationError{Name: "auth_id", err: errors.New(`ent: missing required field "UserAuth.auth_id"`)}
+	}
+	if len(uac.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserAuth.user"`)}
 	}
 	return nil
 }

@@ -14,7 +14,7 @@ type UserAuth struct {
 // Fields of the UserAuth.
 func (UserAuth) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Optional(),
+		field.Int("user_id"),
 		field.Text("auth_extras"),
 		field.String("auth_provider").Unique(),
 		field.String("auth_id"),
@@ -27,6 +27,7 @@ func (UserAuth) Edges() []ent.Edge {
 		edge.From("user", User.Type).
 			Ref("userAuth").
 			Unique().
+			Required().
 			Field("user_id"),
 	}
 }

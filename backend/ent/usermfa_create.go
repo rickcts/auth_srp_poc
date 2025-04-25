@@ -26,14 +26,6 @@ func (umc *UserMFACreate) SetUserID(i int) *UserMFACreate {
 	return umc
 }
 
-// SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (umc *UserMFACreate) SetNillableUserID(i *int) *UserMFACreate {
-	if i != nil {
-		umc.SetUserID(*i)
-	}
-	return umc
-}
-
 // SetMethod sets the "method" field.
 func (umc *UserMFACreate) SetMethod(s string) *UserMFACreate {
 	umc.mutation.SetMethod(s)
@@ -93,8 +85,14 @@ func (umc *UserMFACreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (umc *UserMFACreate) check() error {
+	if _, ok := umc.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserMFA.user_id"`)}
+	}
 	if _, ok := umc.mutation.Method(); !ok {
 		return &ValidationError{Name: "method", err: errors.New(`ent: missing required field "UserMFA.method"`)}
+	}
+	if len(umc.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserMFA.user"`)}
 	}
 	return nil
 }

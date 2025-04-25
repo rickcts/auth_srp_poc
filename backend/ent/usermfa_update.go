@@ -42,12 +42,6 @@ func (umu *UserMFAUpdate) SetNillableUserID(i *int) *UserMFAUpdate {
 	return umu
 }
 
-// ClearUserID clears the value of the "user_id" field.
-func (umu *UserMFAUpdate) ClearUserID() *UserMFAUpdate {
-	umu.mutation.ClearUserID()
-	return umu
-}
-
 // SetMethod sets the "method" field.
 func (umu *UserMFAUpdate) SetMethod(s string) *UserMFAUpdate {
 	umu.mutation.SetMethod(s)
@@ -125,7 +119,18 @@ func (umu *UserMFAUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (umu *UserMFAUpdate) check() error {
+	if umu.mutation.UserCleared() && len(umu.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserMFA.user"`)
+	}
+	return nil
+}
+
 func (umu *UserMFAUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := umu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(usermfa.Table, usermfa.Columns, sqlgraph.NewFieldSpec(usermfa.FieldID, field.TypeInt))
 	if ps := umu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -203,12 +208,6 @@ func (umuo *UserMFAUpdateOne) SetNillableUserID(i *int) *UserMFAUpdateOne {
 	if i != nil {
 		umuo.SetUserID(*i)
 	}
-	return umuo
-}
-
-// ClearUserID clears the value of the "user_id" field.
-func (umuo *UserMFAUpdateOne) ClearUserID() *UserMFAUpdateOne {
-	umuo.mutation.ClearUserID()
 	return umuo
 }
 
@@ -302,7 +301,18 @@ func (umuo *UserMFAUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (umuo *UserMFAUpdateOne) check() error {
+	if umuo.mutation.UserCleared() && len(umuo.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserMFA.user"`)
+	}
+	return nil
+}
+
 func (umuo *UserMFAUpdateOne) sqlSave(ctx context.Context) (_node *UserMFA, err error) {
+	if err := umuo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(usermfa.Table, usermfa.Columns, sqlgraph.NewFieldSpec(usermfa.FieldID, field.TypeInt))
 	id, ok := umuo.mutation.ID()
 	if !ok {

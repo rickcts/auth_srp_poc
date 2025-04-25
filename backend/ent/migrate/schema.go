@@ -26,7 +26,7 @@ var (
 		{Name: "auth_extras", Type: field.TypeString, Size: 2147483647},
 		{Name: "auth_provider", Type: field.TypeString, Unique: true},
 		{Name: "auth_id", Type: field.TypeString},
-		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
 	}
 	// UserAuthsTable holds the schema information for the "user_auths" table.
 	UserAuthsTable = &schema.Table{
@@ -38,7 +38,7 @@ var (
 				Symbol:     "user_auths_users_userAuth",
 				Columns:    []*schema.Column{UserAuthsColumns[4]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.NoAction,
 			},
 		},
 	}
@@ -50,7 +50,7 @@ var (
 		{Name: "timestamp", Type: field.TypeTime},
 		{Name: "ns", Type: field.TypeInt64},
 		{Name: "error_code", Type: field.TypeInt},
-		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
 	}
 	// UserAuthEventsTable holds the schema information for the "user_auth_events" table.
 	UserAuthEventsTable = &schema.Table{
@@ -62,7 +62,7 @@ var (
 				Symbol:     "user_auth_events_users_userAuthEvent",
 				Columns:    []*schema.Column{UserAuthEventsColumns[6]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.NoAction,
 			},
 		},
 	}
@@ -71,7 +71,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "method", Type: field.TypeString},
 		{Name: "params", Type: field.TypeString, Nullable: true},
-		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
 	}
 	// UserMfAsTable holds the schema information for the "user_mf_as" table.
 	UserMfAsTable = &schema.Table{
@@ -83,7 +83,7 @@ var (
 				Symbol:     "user_mf_as_users_userMFA",
 				Columns:    []*schema.Column{UserMfAsColumns[3]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.NoAction,
 			},
 		},
 	}

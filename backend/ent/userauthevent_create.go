@@ -27,14 +27,6 @@ func (uaec *UserAuthEventCreate) SetUserID(i int) *UserAuthEventCreate {
 	return uaec
 }
 
-// SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (uaec *UserAuthEventCreate) SetNillableUserID(i *int) *UserAuthEventCreate {
-	if i != nil {
-		uaec.SetUserID(*i)
-	}
-	return uaec
-}
-
 // SetAuthProvider sets the "auth_provider" field.
 func (uaec *UserAuthEventCreate) SetAuthProvider(i int64) *UserAuthEventCreate {
 	uaec.mutation.SetAuthProvider(i)
@@ -104,6 +96,9 @@ func (uaec *UserAuthEventCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (uaec *UserAuthEventCreate) check() error {
+	if _, ok := uaec.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserAuthEvent.user_id"`)}
+	}
 	if _, ok := uaec.mutation.AuthProvider(); !ok {
 		return &ValidationError{Name: "auth_provider", err: errors.New(`ent: missing required field "UserAuthEvent.auth_provider"`)}
 	}
@@ -118,6 +113,9 @@ func (uaec *UserAuthEventCreate) check() error {
 	}
 	if _, ok := uaec.mutation.ErrorCode(); !ok {
 		return &ValidationError{Name: "error_code", err: errors.New(`ent: missing required field "UserAuthEvent.error_code"`)}
+	}
+	if len(uaec.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserAuthEvent.user"`)}
 	}
 	return nil
 }

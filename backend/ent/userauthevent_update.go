@@ -43,12 +43,6 @@ func (uaeu *UserAuthEventUpdate) SetNillableUserID(i *int) *UserAuthEventUpdate 
 	return uaeu
 }
 
-// ClearUserID clears the value of the "user_id" field.
-func (uaeu *UserAuthEventUpdate) ClearUserID() *UserAuthEventUpdate {
-	uaeu.mutation.ClearUserID()
-	return uaeu
-}
-
 // SetAuthProvider sets the "auth_provider" field.
 func (uaeu *UserAuthEventUpdate) SetAuthProvider(i int64) *UserAuthEventUpdate {
 	uaeu.mutation.ResetAuthProvider()
@@ -183,7 +177,18 @@ func (uaeu *UserAuthEventUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uaeu *UserAuthEventUpdate) check() error {
+	if uaeu.mutation.UserCleared() && len(uaeu.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserAuthEvent.user"`)
+	}
+	return nil
+}
+
 func (uaeu *UserAuthEventUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := uaeu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(userauthevent.Table, userauthevent.Columns, sqlgraph.NewFieldSpec(userauthevent.FieldID, field.TypeInt))
 	if ps := uaeu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -276,12 +281,6 @@ func (uaeuo *UserAuthEventUpdateOne) SetNillableUserID(i *int) *UserAuthEventUpd
 	if i != nil {
 		uaeuo.SetUserID(*i)
 	}
-	return uaeuo
-}
-
-// ClearUserID clears the value of the "user_id" field.
-func (uaeuo *UserAuthEventUpdateOne) ClearUserID() *UserAuthEventUpdateOne {
-	uaeuo.mutation.ClearUserID()
 	return uaeuo
 }
 
@@ -432,7 +431,18 @@ func (uaeuo *UserAuthEventUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uaeuo *UserAuthEventUpdateOne) check() error {
+	if uaeuo.mutation.UserCleared() && len(uaeuo.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserAuthEvent.user"`)
+	}
+	return nil
+}
+
 func (uaeuo *UserAuthEventUpdateOne) sqlSave(ctx context.Context) (_node *UserAuthEvent, err error) {
+	if err := uaeuo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(userauthevent.Table, userauthevent.Columns, sqlgraph.NewFieldSpec(userauthevent.FieldID, field.TypeInt))
 	id, ok := uaeuo.mutation.ID()
 	if !ok {

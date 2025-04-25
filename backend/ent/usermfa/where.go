@@ -88,16 +88,6 @@ func UserIDNotIn(vs ...int) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldNotIn(FieldUserID, vs...))
 }
 
-// UserIDIsNil applies the IsNil predicate on the "user_id" field.
-func UserIDIsNil() predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldIsNull(FieldUserID))
-}
-
-// UserIDNotNil applies the NotNil predicate on the "user_id" field.
-func UserIDNotNil() predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldNotNull(FieldUserID))
-}
-
 // MethodEQ applies the EQ predicate on the "method" field.
 func MethodEQ(v string) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldEQ(FieldMethod, v))
