@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -13,14 +14,19 @@ type UserAuth struct {
 // Fields of the UserAuth.
 func (UserAuth) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("user_id").Unique().Immutable(),
+		field.Int("user_id").Optional(),
 		field.Text("auth_extras"),
-		field.String("auth_provider"),
+		field.String("auth_provider").Unique(),
 		field.String("auth_id"),
 	}
 }
 
 // Edges of the UserAuth.
 func (UserAuth) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.From("user", User.Type).
+			Ref("userAuth").
+			Unique().
+			Field("user_id"),
+	}
 }

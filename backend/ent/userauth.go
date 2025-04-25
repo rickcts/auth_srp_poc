@@ -8,6 +8,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/rickcts/srp/ent/user"
 	"github.com/rickcts/srp/ent/userauth"
 )
 
@@ -17,14 +18,37 @@ type UserAuth struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID int64 `json:"user_id,omitempty"`
+	UserID int `json:"user_id,omitempty"`
 	// AuthExtras holds the value of the "auth_extras" field.
 	AuthExtras string `json:"auth_extras,omitempty"`
 	// AuthProvider holds the value of the "auth_provider" field.
 	AuthProvider string `json:"auth_provider,omitempty"`
 	// AuthID holds the value of the "auth_id" field.
-	AuthID       string `json:"auth_id,omitempty"`
+	AuthID string `json:"auth_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserAuthQuery when eager-loading is set.
+	Edges        UserAuthEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserAuthEdges holds the relations/edges for other nodes in the graph.
+type UserAuthEdges struct {
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserAuthEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -61,7 +85,7 @@ func (ua *UserAuth) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				ua.UserID = value.Int64
+				ua.UserID = int(value.Int64)
 			}
 		case userauth.FieldAuthExtras:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -92,6 +116,11 @@ func (ua *UserAuth) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (ua *UserAuth) Value(name string) (ent.Value, error) {
 	return ua.selectValues.Get(name)
+}
+
+// QueryUser queries the "user" edge of the UserAuth entity.
+func (ua *UserAuth) QueryUser() *UserQuery {
+	return NewUserAuthClient(ua.config).QueryUser(ua)
 }
 
 // Update returns a builder for updating this UserAuth.

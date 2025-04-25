@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/rickcts/srp/ent/user"
 	"github.com/rickcts/srp/ent/userauth"
 )
 
@@ -20,8 +21,16 @@ type UserAuthCreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (uac *UserAuthCreate) SetUserID(i int64) *UserAuthCreate {
+func (uac *UserAuthCreate) SetUserID(i int) *UserAuthCreate {
 	uac.mutation.SetUserID(i)
+	return uac
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (uac *UserAuthCreate) SetNillableUserID(i *int) *UserAuthCreate {
+	if i != nil {
+		uac.SetUserID(*i)
+	}
 	return uac
 }
 
@@ -41,6 +50,11 @@ func (uac *UserAuthCreate) SetAuthProvider(s string) *UserAuthCreate {
 func (uac *UserAuthCreate) SetAuthID(s string) *UserAuthCreate {
 	uac.mutation.SetAuthID(s)
 	return uac
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (uac *UserAuthCreate) SetUser(u *User) *UserAuthCreate {
+	return uac.SetUserID(u.ID)
 }
 
 // Mutation returns the UserAuthMutation object of the builder.
@@ -77,9 +91,6 @@ func (uac *UserAuthCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (uac *UserAuthCreate) check() error {
-	if _, ok := uac.mutation.UserID(); !ok {
-		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserAuth.user_id"`)}
-	}
 	if _, ok := uac.mutation.AuthExtras(); !ok {
 		return &ValidationError{Name: "auth_extras", err: errors.New(`ent: missing required field "UserAuth.auth_extras"`)}
 	}
@@ -115,10 +126,6 @@ func (uac *UserAuthCreate) createSpec() (*UserAuth, *sqlgraph.CreateSpec) {
 		_node = &UserAuth{config: uac.config}
 		_spec = sqlgraph.NewCreateSpec(userauth.Table, sqlgraph.NewFieldSpec(userauth.FieldID, field.TypeInt))
 	)
-	if value, ok := uac.mutation.UserID(); ok {
-		_spec.SetField(userauth.FieldUserID, field.TypeInt64, value)
-		_node.UserID = value
-	}
 	if value, ok := uac.mutation.AuthExtras(); ok {
 		_spec.SetField(userauth.FieldAuthExtras, field.TypeString, value)
 		_node.AuthExtras = value
@@ -130,6 +137,23 @@ func (uac *UserAuthCreate) createSpec() (*UserAuth, *sqlgraph.CreateSpec) {
 	if value, ok := uac.mutation.AuthID(); ok {
 		_spec.SetField(userauth.FieldAuthID, field.TypeString, value)
 		_node.AuthID = value
+	}
+	if nodes := uac.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   userauth.UserTable,
+			Columns: []string{userauth.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.UserID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

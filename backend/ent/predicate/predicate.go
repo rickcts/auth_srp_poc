@@ -6,5 +6,14 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// User is the predicate function for user builders.
+type User func(*sql.Selector)
+
 // UserAuth is the predicate function for userauth builders.
 type UserAuth func(*sql.Selector)
+
+// UserAuthEvent is the predicate function for userauthevent builders.
+type UserAuthEvent func(*sql.Selector)
+
+// UserMFA is the predicate function for usermfa builders.
+type UserMFA func(*sql.Selector)

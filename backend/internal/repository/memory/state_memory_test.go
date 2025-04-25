@@ -1,5 +1,5 @@
 // internal/repository/memory/state_memory_test.go
-package memory
+package memory_test
 
 import (
 	"testing"
@@ -7,13 +7,14 @@ import (
 
 	"github.com/rickcts/srp/internal/models"
 	"github.com/rickcts/srp/internal/repository"
+	"github.com/rickcts/srp/internal/repository/memory"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMemoryStateRepository(t *testing.T) {
-	repo := NewMemoryStateRepository().(*MemoryStateRepository)
+	repo := memory.NewMemoryStateRepository()
 
 	authID := "testuser"
 	state := models.AuthSessionState{

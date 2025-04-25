@@ -9,6 +9,18 @@ import (
 	"github.com/rickcts/srp/ent"
 )
 
+// The UserFunc type is an adapter to allow the use of ordinary
+// function as User mutator.
+type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
+}
+
 // The UserAuthFunc type is an adapter to allow the use of ordinary
 // function as UserAuth mutator.
 type UserAuthFunc func(context.Context, *ent.UserAuthMutation) (ent.Value, error)
@@ -19,6 +31,30 @@ func (f UserAuthFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserAuthMutation", m)
+}
+
+// The UserAuthEventFunc type is an adapter to allow the use of ordinary
+// function as UserAuthEvent mutator.
+type UserAuthEventFunc func(context.Context, *ent.UserAuthEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserAuthEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserAuthEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserAuthEventMutation", m)
+}
+
+// The UserMFAFunc type is an adapter to allow the use of ordinary
+// function as UserMFA mutator.
+type UserMFAFunc func(context.Context, *ent.UserMFAMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserMFAFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserMFAMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMFAMutation", m)
 }
 
 // Condition is a hook condition function.

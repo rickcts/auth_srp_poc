@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	client, err := ent.Open("postgres", "host=<host> port=<port> user=<user> dbname=<database> password=<pass>")
+	client, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseSettings)
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}

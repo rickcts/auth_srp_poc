@@ -19,7 +19,8 @@ type EntUserRepository struct {
 
 func NewEntUserRepository(client *ent.Client) repository.UserRepository {
 	return &EntUserRepository{
-		users: make(map[string]*models.User),
+		users:  make(map[string]*models.User),
+		client: client,
 	}
 }
 
@@ -30,16 +31,31 @@ func (r *EntUserRepository) CreateUserCreds(ctx context.Context, username, saltH
 	}
 	authExtrasJSON, _ := json.Marshal(authExtras)
 
-	_, err := r.client.UserAuth.
+	user, err := r.client.User.
+		Create().
+		SetName(username).
+		SetState("registered").
+		Save(ctx)
+	if err != nil {
+		return repository.ErrUserExists
+	}
+
+	_, err = r.client.UserAuth.
 		Create().
 		SetAuthProvider("srp").
 		SetAuthID(username).
 		SetAuthExtras(string(authExtrasJSON)).
+		SetUserID(user.ID).
 		Save(ctx)
+
 	if err != nil && ent.IsConstraintError(err) {
 		return repository.ErrUserExists
 	}
-
+	if err != nil {
+		// Maybe log the specific error here for debugging
+		// log.Printf("Error during Save: %v", err)
+		return fmt.Errorf("database save failed: %w", err) // Make sure you return the error
+	}
 	fmt.Printf("User registered: %s\n", username) // Debug log
 	return nil
 }

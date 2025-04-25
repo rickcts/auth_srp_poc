@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/rickcts/srp/ent/predicate"
+	"github.com/rickcts/srp/ent/user"
 	"github.com/rickcts/srp/ent/userauth"
 )
 
@@ -24,6 +25,26 @@ type UserAuthUpdate struct {
 // Where appends a list predicates to the UserAuthUpdate builder.
 func (uau *UserAuthUpdate) Where(ps ...predicate.UserAuth) *UserAuthUpdate {
 	uau.mutation.Where(ps...)
+	return uau
+}
+
+// SetUserID sets the "user_id" field.
+func (uau *UserAuthUpdate) SetUserID(i int) *UserAuthUpdate {
+	uau.mutation.SetUserID(i)
+	return uau
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (uau *UserAuthUpdate) SetNillableUserID(i *int) *UserAuthUpdate {
+	if i != nil {
+		uau.SetUserID(*i)
+	}
+	return uau
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (uau *UserAuthUpdate) ClearUserID() *UserAuthUpdate {
+	uau.mutation.ClearUserID()
 	return uau
 }
 
@@ -69,9 +90,20 @@ func (uau *UserAuthUpdate) SetNillableAuthID(s *string) *UserAuthUpdate {
 	return uau
 }
 
+// SetUser sets the "user" edge to the User entity.
+func (uau *UserAuthUpdate) SetUser(u *User) *UserAuthUpdate {
+	return uau.SetUserID(u.ID)
+}
+
 // Mutation returns the UserAuthMutation object of the builder.
 func (uau *UserAuthUpdate) Mutation() *UserAuthMutation {
 	return uau.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (uau *UserAuthUpdate) ClearUser() *UserAuthUpdate {
+	uau.mutation.ClearUser()
+	return uau
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -119,6 +151,35 @@ func (uau *UserAuthUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := uau.mutation.AuthID(); ok {
 		_spec.SetField(userauth.FieldAuthID, field.TypeString, value)
 	}
+	if uau.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   userauth.UserTable,
+			Columns: []string{userauth.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uau.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   userauth.UserTable,
+			Columns: []string{userauth.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uau.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{userauth.Label}
@@ -137,6 +198,26 @@ type UserAuthUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *UserAuthMutation
+}
+
+// SetUserID sets the "user_id" field.
+func (uauo *UserAuthUpdateOne) SetUserID(i int) *UserAuthUpdateOne {
+	uauo.mutation.SetUserID(i)
+	return uauo
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (uauo *UserAuthUpdateOne) SetNillableUserID(i *int) *UserAuthUpdateOne {
+	if i != nil {
+		uauo.SetUserID(*i)
+	}
+	return uauo
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (uauo *UserAuthUpdateOne) ClearUserID() *UserAuthUpdateOne {
+	uauo.mutation.ClearUserID()
+	return uauo
 }
 
 // SetAuthExtras sets the "auth_extras" field.
@@ -181,9 +262,20 @@ func (uauo *UserAuthUpdateOne) SetNillableAuthID(s *string) *UserAuthUpdateOne {
 	return uauo
 }
 
+// SetUser sets the "user" edge to the User entity.
+func (uauo *UserAuthUpdateOne) SetUser(u *User) *UserAuthUpdateOne {
+	return uauo.SetUserID(u.ID)
+}
+
 // Mutation returns the UserAuthMutation object of the builder.
 func (uauo *UserAuthUpdateOne) Mutation() *UserAuthMutation {
 	return uauo.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (uauo *UserAuthUpdateOne) ClearUser() *UserAuthUpdateOne {
+	uauo.mutation.ClearUser()
+	return uauo
 }
 
 // Where appends a list predicates to the UserAuthUpdate builder.
@@ -260,6 +352,35 @@ func (uauo *UserAuthUpdateOne) sqlSave(ctx context.Context) (_node *UserAuth, er
 	}
 	if value, ok := uauo.mutation.AuthID(); ok {
 		_spec.SetField(userauth.FieldAuthID, field.TypeString, value)
+	}
+	if uauo.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   userauth.UserTable,
+			Columns: []string{userauth.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uauo.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   userauth.UserTable,
+			Columns: []string{userauth.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &UserAuth{config: uauo.config}
 	_spec.Assign = _node.assignValues

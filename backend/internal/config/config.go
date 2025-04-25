@@ -34,6 +34,10 @@ type Config struct {
 	// Set the expiry time between srp exchange
 	AuthStateExpiry  time.Time
 	HashingAlgorithm crypto.Hash
+	// if not assigned, use in-memory sqlite
+	DatabaseDriver string
+	// host=<host> port=<port> user=<user> dbname=<database> password=<pass> sslmode=<enable/disable>
+	DatabaseSettings string
 }
 
 func Load() (*Config, error) {
@@ -62,6 +66,7 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid AUTH_STATE_EXPIRY_SECONDS: %w", err)
 	}
+
 	authStateExpiry := time.Now().Add(time.Duration(expirySeconds) * time.Second)
 	if authStateExpiry.IsZero() {
 		return nil, fmt.Errorf("AUTH_STATE_EXPIRY_SECONDS cannot be zero")
@@ -80,11 +85,40 @@ func Load() (*Config, error) {
 		hashingAlgorithm = crypto.SHA512
 	}
 
+	var databaseDriver string
+	var databaseSettings string
+	databaseDriver = os.Getenv("DATABASE_DRIVER")
+	if databaseDriver == "" {
+		databaseDriver = "sqlite3"
+		databaseSettings = "file:ent?mode=memory&cache=shared&_fk=1"
+	} else {
+		databaseSettings = fmt.Sprintf(
+			"host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
+			getEnvOrDefault("DB_HOST", "localhost"),
+			getEnvOrDefault("DB_PORT", "5432"),
+			getEnvOrDefault("DB_USER", "postgres"),
+			getEnvOrDefault("DB_NAME", "postgres"),
+			getEnvOrDefault("DB_PASS", "postgres"),
+			getEnvOrDefault("DB_SSL_MODE", "disable"),
+		)
+	}
+
 	return &Config{
 		Port:             port,
 		JWTSecret:        jwtSecret,
 		SRPGroup:         SRPGroupEnv,
 		AuthStateExpiry:  authStateExpiry,
 		HashingAlgorithm: hashingAlgorithm,
+		DatabaseSettings: databaseSettings,
+		DatabaseDriver:   "sqlite3",
 	}, nil
+
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }

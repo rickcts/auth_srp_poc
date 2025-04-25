@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/rickcts/srp/ent/predicate"
+	"github.com/rickcts/srp/ent/user"
 	"github.com/rickcts/srp/ent/userauth"
 )
 
@@ -22,6 +23,7 @@ type UserAuthQuery struct {
 	order      []userauth.OrderOption
 	inters     []Interceptor
 	predicates []predicate.UserAuth
+	withUser   *UserQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -56,6 +58,28 @@ func (uaq *UserAuthQuery) Unique(unique bool) *UserAuthQuery {
 func (uaq *UserAuthQuery) Order(o ...userauth.OrderOption) *UserAuthQuery {
 	uaq.order = append(uaq.order, o...)
 	return uaq
+}
+
+// QueryUser chains the current query on the "user" edge.
+func (uaq *UserAuthQuery) QueryUser() *UserQuery {
+	query := (&UserClient{config: uaq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uaq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uaq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userauth.Table, userauth.FieldID, selector),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userauth.UserTable, userauth.UserColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uaq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first UserAuth entity from the query.
@@ -250,10 +274,22 @@ func (uaq *UserAuthQuery) Clone() *UserAuthQuery {
 		order:      append([]userauth.OrderOption{}, uaq.order...),
 		inters:     append([]Interceptor{}, uaq.inters...),
 		predicates: append([]predicate.UserAuth{}, uaq.predicates...),
+		withUser:   uaq.withUser.Clone(),
 		// clone intermediate query.
 		sql:  uaq.sql.Clone(),
 		path: uaq.path,
 	}
+}
+
+// WithUser tells the query-builder to eager-load the nodes that are connected to
+// the "user" edge. The optional arguments are used to configure the query builder of the edge.
+func (uaq *UserAuthQuery) WithUser(opts ...func(*UserQuery)) *UserAuthQuery {
+	query := (&UserClient{config: uaq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uaq.withUser = query
+	return uaq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -262,7 +298,7 @@ func (uaq *UserAuthQuery) Clone() *UserAuthQuery {
 // Example:
 //
 //	var v []struct {
-//		UserID int64 `json:"user_id,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -285,7 +321,7 @@ func (uaq *UserAuthQuery) GroupBy(field string, fields ...string) *UserAuthGroup
 // Example:
 //
 //	var v []struct {
-//		UserID int64 `json:"user_id,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //	}
 //
 //	client.UserAuth.Query().
@@ -332,8 +368,11 @@ func (uaq *UserAuthQuery) prepareQuery(ctx context.Context) error {
 
 func (uaq *UserAuthQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*UserAuth, error) {
 	var (
-		nodes = []*UserAuth{}
-		_spec = uaq.querySpec()
+		nodes       = []*UserAuth{}
+		_spec       = uaq.querySpec()
+		loadedTypes = [1]bool{
+			uaq.withUser != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*UserAuth).scanValues(nil, columns)
@@ -341,6 +380,7 @@ func (uaq *UserAuthQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Us
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &UserAuth{config: uaq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -352,7 +392,43 @@ func (uaq *UserAuthQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Us
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := uaq.withUser; query != nil {
+		if err := uaq.loadUser(ctx, query, nodes, nil,
+			func(n *UserAuth, e *User) { n.Edges.User = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (uaq *UserAuthQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UserAuth, init func(*UserAuth), assign func(*UserAuth, *User)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*UserAuth)
+	for i := range nodes {
+		fk := nodes[i].UserID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(user.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "user_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (uaq *UserAuthQuery) sqlCount(ctx context.Context) (int, error) {
@@ -379,6 +455,9 @@ func (uaq *UserAuthQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != userauth.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if uaq.withUser != nil {
+			_spec.Node.AddColumnOnce(userauth.FieldUserID)
 		}
 	}
 	if ps := uaq.predicates; len(ps) > 0 {

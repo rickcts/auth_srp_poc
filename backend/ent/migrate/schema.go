@@ -8,25 +8,96 @@ import (
 )
 
 var (
+	// UsersColumns holds the columns for the "users" table.
+	UsersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "state", Type: field.TypeString},
+	}
+	// UsersTable holds the schema information for the "users" table.
+	UsersTable = &schema.Table{
+		Name:       "users",
+		Columns:    UsersColumns,
+		PrimaryKey: []*schema.Column{UsersColumns[0]},
+	}
 	// UserAuthsColumns holds the columns for the "user_auths" table.
 	UserAuthsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "user_id", Type: field.TypeInt64, Unique: true},
 		{Name: "auth_extras", Type: field.TypeString, Size: 2147483647},
-		{Name: "auth_provider", Type: field.TypeString},
+		{Name: "auth_provider", Type: field.TypeString, Unique: true},
 		{Name: "auth_id", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeInt, Nullable: true},
 	}
 	// UserAuthsTable holds the schema information for the "user_auths" table.
 	UserAuthsTable = &schema.Table{
 		Name:       "user_auths",
 		Columns:    UserAuthsColumns,
 		PrimaryKey: []*schema.Column{UserAuthsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_auths_users_userAuth",
+				Columns:    []*schema.Column{UserAuthsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// UserAuthEventsColumns holds the columns for the "user_auth_events" table.
+	UserAuthEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "auth_provider", Type: field.TypeInt64},
+		{Name: "host", Type: field.TypeString},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "ns", Type: field.TypeInt64},
+		{Name: "error_code", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// UserAuthEventsTable holds the schema information for the "user_auth_events" table.
+	UserAuthEventsTable = &schema.Table{
+		Name:       "user_auth_events",
+		Columns:    UserAuthEventsColumns,
+		PrimaryKey: []*schema.Column{UserAuthEventsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_auth_events_users_userAuthEvent",
+				Columns:    []*schema.Column{UserAuthEventsColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// UserMfAsColumns holds the columns for the "user_mf_as" table.
+	UserMfAsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "method", Type: field.TypeString},
+		{Name: "params", Type: field.TypeString, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// UserMfAsTable holds the schema information for the "user_mf_as" table.
+	UserMfAsTable = &schema.Table{
+		Name:       "user_mf_as",
+		Columns:    UserMfAsColumns,
+		PrimaryKey: []*schema.Column{UserMfAsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_mf_as_users_userMFA",
+				Columns:    []*schema.Column{UserMfAsColumns[3]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		UsersTable,
 		UserAuthsTable,
+		UserAuthEventsTable,
+		UserMfAsTable,
 	}
 )
 
 func init() {
+	UserAuthsTable.ForeignKeys[0].RefTable = UsersTable
+	UserAuthEventsTable.ForeignKeys[0].RefTable = UsersTable
+	UserMfAsTable.ForeignKeys[0].RefTable = UsersTable
 }

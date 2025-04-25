@@ -1,18 +1,19 @@
 // internal/repository/memory/user_memory_test.go
-package memory
+package memory_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/rickcts/srp/internal/repository"
+	"github.com/rickcts/srp/internal/repository/memory"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMemoryUserRepository(t *testing.T) {
-	repo := NewMemoryUserRepository()
+	repo := memory.NewMemoryUserRepository()
 
 	username := "testuser"
 	salt := "somesalt"
