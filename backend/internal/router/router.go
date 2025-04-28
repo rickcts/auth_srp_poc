@@ -8,7 +8,7 @@ import (
 
 // SetupRoutes defines authentication routes
 func SetupRoutes(app *fiber.App, authHandler *handler.AuthHandler) {
-	api := app.Group("/api/auth")
+	api := app.Group("/api/auth/srp")
 
 	api.Post("/register", authHandler.Register)     // User registration
 	api.Post("/login/step1", authHandler.AuthStep1) // SRP Step 1 (Client sends )

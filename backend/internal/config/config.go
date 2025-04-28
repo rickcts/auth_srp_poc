@@ -10,10 +10,7 @@ import (
 	"github.com/tadglines/go-pkgs/crypto/srp"
 )
 
-type Config struct {
-	// Server port
-	Port      string
-	JWTSecret string
+type SRPConfig struct {
 	// The set of supported groups are:
 	// 		rfc5054.1024
 	//		rfc5054.1536
@@ -30,11 +27,17 @@ type Config struct {
 	//		stanford.6144
 	//		stanford.8192
 	// Default to rfc5054.4096
-	SRPGroup string
+	// Default to rfc5054.4096
+	Group string
 	// Set the expiry time between srp exchange
 	AuthStateExpiry  time.Time
 	HashingAlgorithm crypto.Hash
-	// if not assigned, use in-memory sqlite
+}
+type Config struct {
+	// Server port
+	Port           string
+	JWTSecret      string
+	SRP            SRPConfig
 	DatabaseDriver string
 	// host=<host> port=<port> user=<user> dbname=<database> password=<pass> sslmode=<enable/disable>
 	DatabaseSettings string
@@ -51,14 +54,14 @@ func Load() (*Config, error) {
 		jwtSecret = "a_very_secret_key_change_me"
 		fmt.Println("Warning: Using default JWT secret. Set JWT_SECRET environment variable.")
 	}
-	var SRPGroupEnv string
-	SRPGroupEnv = os.Getenv("SRP_GROUP_BITS")
-	_, err := srp.GetGroup(SRPGroupEnv)
+	var srpGroupEnv string
+	srpGroupEnv = os.Getenv("SRP_GROUP_BITS")
+	_, err := srp.GetGroup(srpGroupEnv)
 	if err != nil {
-		SRPGroupEnv = "rfc5054.4096"
+		srpGroupEnv = "rfc5054.4096"
 	}
 
-	authStateExpiryStr := os.Getenv("AUTH_STATE_EXPIRY_SECONDS")
+	authStateExpiryStr := os.Getenv("SRP_AUTH_STATE_EXPIRY_SECONDS")
 	if authStateExpiryStr == "" {
 		authStateExpiryStr = "120" // Default: 2 minutes
 	}
@@ -66,10 +69,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid AUTH_STATE_EXPIRY_SECONDS: %w", err)
 	}
+	srpAuthStateExpiry := time.Now().Add(time.Duration(expirySeconds) * time.Second)
 
-	authStateExpiry := time.Now().Add(time.Duration(expirySeconds) * time.Second)
-	if authStateExpiry.IsZero() {
-		return nil, fmt.Errorf("AUTH_STATE_EXPIRY_SECONDS cannot be zero")
+	if srpAuthStateExpiry.IsZero() {
+		return nil, fmt.Errorf("SRP_AUTH_STATE_EXPIRY_SECONDS cannot be zero")
 	}
 	hashingAlgorithmStr := os.Getenv("HASHING_ALGORITHM")
 
@@ -104,11 +107,13 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:             port,
-		JWTSecret:        jwtSecret,
-		SRPGroup:         SRPGroupEnv,
-		AuthStateExpiry:  authStateExpiry,
-		HashingAlgorithm: hashingAlgorithm,
+		Port:      port,
+		JWTSecret: jwtSecret,
+		SRP: SRPConfig{
+			Group:            srpGroupEnv,
+			AuthStateExpiry:  srpAuthStateExpiry,
+			HashingAlgorithm: hashingAlgorithm,
+		},
 		DatabaseSettings: databaseSettings,
 		DatabaseDriver:   "sqlite3",
 	}, nil

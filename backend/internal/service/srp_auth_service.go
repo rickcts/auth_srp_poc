@@ -22,7 +22,7 @@ func NewAuthService(userRepo repository.UserRepository, stateRepo repository.Sta
 		userRepo:  userRepo,
 		stateRepo: stateRepo,
 		tokenSvc:  tokenSvc,
-		srpGroup:  cfg.SRPGroup,
+		srpGroup:  cfg.SRP.Group,
 		cfg:       cfg,
 	}
 }
@@ -73,7 +73,7 @@ func (s *AuthService) ComputeB(ctx context.Context, req models.AuthStep1Request)
 		return nil, fmt.Errorf("invalid salt hex format: %w", err)
 	}
 
-	srp, err := srp.NewSRP(s.srpGroup, s.cfg.HashingAlgorithm.New, nil)
+	srp, err := srp.NewSRP(s.srpGroup, s.cfg.SRP.HashingAlgorithm.New, nil)
 	if err != nil {
 		log.Printf("[AuthService.ComputeB] ERROR: Failed to create SRP instance for user '%s': %v", req.Username, err)
 		return nil, fmt.Errorf("failed to create SRP instance: %w", err)
@@ -85,10 +85,10 @@ func (s *AuthService) ComputeB(ctx context.Context, req models.AuthStep1Request)
 
 	state := models.AuthSessionState{
 		Username: req.Username,
-		Salt:     salt,                  // This is 's'
-		Server:   server,                // SRP server instance
-		B:        B,                     // This is 'B'
-		Expiry:   s.cfg.AuthStateExpiry, // time.Time
+		Salt:     salt,                      // This is 's'
+		Server:   server,                    // SRP server instance
+		B:        B,                         // This is 'B'
+		Expiry:   s.cfg.SRP.AuthStateExpiry, // time.Time
 	}
 	s.stateRepo.StoreAuthState(req.Username, state) // Assuming StoreAuthState handles expiry correctly
 

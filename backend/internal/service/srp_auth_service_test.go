@@ -26,16 +26,18 @@ func createTestConfig() *config.Config {
 	// Use a known group for deterministic tests if possible, or handle variability
 	// Using a smaller group for faster tests might be an option if logic allows
 	return &config.Config{
-		JWTSecret:        "test-secret",
-		SRPGroup:         "rfc5054.4096",
-		AuthStateExpiry:  time.Now().Add(5 * time.Minute), // Set expiry in the future
-		HashingAlgorithm: crypto.SHA512,
+		JWTSecret: "test-secret",
+		SRP: config.SRPConfig{
+			Group:            "rfc5054.4096",
+			AuthStateExpiry:  time.Now().Add(5 * time.Minute), // Set expiry in the future
+			HashingAlgorithm: crypto.SHA512,
+		},
 	}
 }
 
 // Helper to generate valid SRP credentials for testing
 func generateTestCreds(username, password string, cfg *config.Config) (saltHex, verifierHex string, err error) {
-	srpInstance, err := srp.NewSRP(cfg.SRPGroup, cfg.HashingAlgorithm.New, nil) // Match hash used in service
+	srpInstance, err := srp.NewSRP(cfg.SRP.Group, cfg.SRP.HashingAlgorithm.New, nil) // Match hash used in service
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create SRP instance: %w", err)
 	}
@@ -201,7 +203,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 	t.Run("SRPInstanceError", func(t *testing.T) {
 		// Create a config with an invalid SRP group
 		badCfg := createTestConfig()
-		badCfg.SRPGroup = "invalid-group"
+		badCfg.SRP.Group = "invalid-group"
 
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("GetUserCredsByUsername", username).Return(saltHex, verifierHex, nil).Once()
@@ -243,7 +245,7 @@ func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 	require.NoError(t, err, "Setup: Failed to decode verifier hex")
 
 	// 2. Simulate Step 1: Create Server Session and get B
-	srpInstance, err := srp.NewSRP(cfg.SRPGroup, sha512.New, nil)
+	srpInstance, err := srp.NewSRP(cfg.SRP.Group, sha512.New, nil)
 	require.NoError(t, err, "Setup: Failed to create SRP instance")
 	serverSession := srpInstance.NewServerSession([]byte(username), saltBytes, verifierBytes)
 	serverBBytes := serverSession.GetB()
@@ -266,7 +268,7 @@ func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 		Salt:     saltBytes,
 		Server:   serverSession, // The *actual* server session from step 1 simulation
 		B:        serverBBytes,
-		Expiry:   cfg.AuthStateExpiry, // Use expiry from config
+		Expiry:   cfg.SRP.AuthStateExpiry, // Use expiry from config
 	}
 
 	// 5. Prepare the request for Step 2
