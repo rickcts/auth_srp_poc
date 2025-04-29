@@ -39,13 +39,17 @@ func main() {
 	stateRepo := memory.NewMemoryStateRepository()
 
 	tokenService := service.NewTokenService(cfg.JWTSecret)
-	authService := service.NewAuthService(userRepo, stateRepo, tokenService, cfg)
-
-	authHandler := handler.NewAuthHandler(authService)
 
 	app := server.New()
 
-	router.SetupRoutes(app, authHandler)
+	router.SetupSRPRoutes(app, handler.NewSRPAuthHandler(
+		service.NewSRPAuthService(userRepo, stateRepo, tokenService, cfg),
+	))
+
+	router.SetupOAuthRoutes(app, handler.NewOAuthHandler(
+		service.NewMSOAuthService(cfg),
+		cfg,
+	))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

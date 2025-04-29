@@ -12,7 +12,7 @@ type MockAuthService struct {
 	mock.Mock
 }
 
-func (m *MockAuthService) Register(ctx context.Context, req models.RegisterRequest) error {
+func (m *MockAuthService) Register(ctx context.Context, req models.SRPRegisterRequest) error {
 	args := m.Called(req)
 	return args.Error(0)
 }

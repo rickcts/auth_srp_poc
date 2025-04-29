@@ -53,7 +53,7 @@ func TestAuthService_Register(t *testing.T) {
 	mockTokenSvc := new(mocks.MockTokenService)
 	cfg := createTestConfig()
 
-	req := models.RegisterRequest{
+	req := models.SRPRegisterRequest{
 		Username: "testuser",
 		Salt:     "somesalt",
 		Verifier: "someverifier",
@@ -62,7 +62,7 @@ func TestAuthService_Register(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("CreateUserCreds", req.Username, req.Salt, req.Verifier).Return(nil).Once()
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		err := authService.Register(context.Background(), req)
 
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestAuthService_Register(t *testing.T) {
 	t.Run("UserExists", func(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("CreateUserCreds", req.Username, req.Salt, req.Verifier).Return(repository.ErrUserExists).Once()
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		err := authService.Register(context.Background(), req)
 
 		require.Error(t, err)
@@ -85,7 +85,7 @@ func TestAuthService_Register(t *testing.T) {
 		repoErr := errors.New("database error")
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("CreateUserCreds", req.Username, req.Salt, req.Verifier).Return(repoErr).Once()
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		err := authService.Register(context.Background(), req)
 
 		require.Error(t, err)
@@ -94,9 +94,9 @@ func TestAuthService_Register(t *testing.T) {
 	})
 
 	t.Run("EmptyFields", func(t *testing.T) {
-		emptyReq := models.RegisterRequest{Username: "", Salt: "", Verifier: ""}
+		emptyReq := models.SRPRegisterRequest{Username: "", Salt: "", Verifier: ""}
 		mockUserRepo := new(mocks.MockUserRepository)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		err := authService.Register(context.Background(), emptyReq)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "username, salt, and verifier cannot be empty")
@@ -123,7 +123,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		// Expect StoreAuthState to be called, capture the state to verify expiry later if needed
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockStateRepo.On("StoreAuthState", username, mock.AnythingOfType("models.AuthSessionState")).Return(nil).Once()
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("GetUserCredsByUsername", username).Return("", "", repository.ErrUserNotFound).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
@@ -158,7 +158,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("GetUserCredsByUsername", username).Return(saltHex, "invalid-hex", nil).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
@@ -173,7 +173,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("GetUserCredsByUsername", username).Return("invalid-hex", verifierHex, nil).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
@@ -189,7 +189,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("GetUserCredsByUsername", username).Return("", "", repoErr).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, cfg)
 		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
@@ -208,7 +208,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockUserRepo.On("GetUserCredsByUsername", username).Return(saltHex, verifierHex, nil).Once()
 		mockStateRepo := new(mocks.MockStateRepository)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, badCfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, badCfg)
 		resp, err := authService.ComputeB(context.Background(), req)
 
 		require.Error(t, err)
@@ -298,7 +298,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository) // Still needed for NewAuthService
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Mock expectations
 		mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
@@ -329,7 +329,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Mock expectations
 		mockStateRepo.On("GetAuthState", data.username).Return(nil, repository.ErrStateNotFound).Once()
@@ -354,7 +354,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Modify request for this test case
 		badReq := data.req
@@ -382,7 +382,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Modify request
 		badReq := data.req
@@ -417,7 +417,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Mock expectations
 		mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
@@ -444,7 +444,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Modify request
 		badReq := data.req
@@ -473,7 +473,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		badState := data.validState
 		badState.Server = nil
@@ -499,7 +499,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		mockUserRepo := new(mocks.MockUserRepository)
 		mockStateRepo := new(mocks.MockStateRepository)
 		mockTokenSvc := new(mocks.MockTokenService)
-		authService := NewAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
+		authService := NewSRPAuthService(mockUserRepo, mockStateRepo, mockTokenSvc, data.cfg)
 
 		// Mock expectations
 		mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()

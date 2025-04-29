@@ -8,6 +8,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/stretchr/testify v1.10.0
 	github.com/tadglines/go-pkgs v0.0.0-20210623144937-b983b20f54f9
+	golang.org/x/oauth2 v0.29.0
 )
 
 require (
@@ -30,7 +31,7 @@ require (
 	entgo.io/ent v0.14.4
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -6,8 +6,8 @@ import (
 	"github.com/tadglines/go-pkgs/crypto/srp"
 )
 
-// RegisterRequest is the input for user registration
-type RegisterRequest struct {
+// SRPRegisterRequest is the input for user registration
+type SRPRegisterRequest struct {
 	Username string `json:"username"`
 	Salt     string `json:"salt"`     // Hex encoded salt 's'
 	Verifier string `json:"verifier"` // Hex encoded verifier 'v'

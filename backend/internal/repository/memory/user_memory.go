@@ -11,13 +11,13 @@ import (
 
 // MemoryUserRepository implements UserRepository in memory (NOT FOR PRODUCTION)
 type MemoryUserRepository struct {
-	users map[string]*models.User
+	users map[string]*models.SRPUser
 	mutex sync.RWMutex
 }
 
 func NewMemoryUserRepository() repository.UserRepository {
 	return &MemoryUserRepository{
-		users: make(map[string]*models.User),
+		users: make(map[string]*models.SRPUser),
 	}
 }
 
@@ -29,7 +29,7 @@ func (r *MemoryUserRepository) CreateUserCreds(ctx context.Context, username, sa
 		return repository.ErrUserExists
 	}
 
-	r.users[username] = &models.User{
+	r.users[username] = &models.SRPUser{
 		Username: username,
 		Salt:     saltHex,
 		Verifier: verifierHex,

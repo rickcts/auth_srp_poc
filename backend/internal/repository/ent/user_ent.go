@@ -13,13 +13,13 @@ import (
 
 // EntUserRepository implements UserRepository to be stored using Ent
 type EntUserRepository struct {
-	users  map[string]*models.User
+	users  map[string]*models.SRPUser
 	client *ent.Client
 }
 
 func NewEntUserRepository(client *ent.Client) repository.UserRepository {
 	return &EntUserRepository{
-		users:  make(map[string]*models.User),
+		users:  make(map[string]*models.SRPUser),
 		client: client,
 	}
 }

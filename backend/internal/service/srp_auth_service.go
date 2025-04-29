@@ -13,12 +13,12 @@ import (
 	"github.com/tadglines/go-pkgs/crypto/srp"
 )
 
-var _ AuthGenerator = (*AuthService)(nil)
+var _ SRPAuthGenerator = (*SRPAuthService)(nil)
 
-// NewAuthService creates a new AuthService
-func NewAuthService(userRepo repository.UserRepository, stateRepo repository.StateRepository, tokenSvc TokenGenerator, cfg *config.Config) *AuthService {
+// NewSRPAuthService creates a new SRPAuthService
+func NewSRPAuthService(userRepo repository.UserRepository, stateRepo repository.StateRepository, tokenSvc TokenGenerator, cfg *config.Config) *SRPAuthService {
 	// Log SRP parameters being used, including the hash function (sha)
-	return &AuthService{
+	return &SRPAuthService{
 		userRepo:  userRepo,
 		stateRepo: stateRepo,
 		tokenSvc:  tokenSvc,
@@ -28,7 +28,7 @@ func NewAuthService(userRepo repository.UserRepository, stateRepo repository.Sta
 }
 
 // Register handles user registration
-func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) error {
+func (s *SRPAuthService) Register(ctx context.Context, req models.SRPRegisterRequest) error {
 	if req.Username == "" || req.Salt == "" || req.Verifier == "" {
 		log.Printf("[AuthService.Register] ERROR: Missing required fields for user '%s'", req.Username)
 		return fmt.Errorf("username, salt, and verifier cannot be empty")
@@ -50,7 +50,7 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 }
 
 // ComputeB handles SRP step 1 (Server -> Client: salt, B)
-func (s *AuthService) ComputeB(ctx context.Context, req models.AuthStep1Request) (*models.AuthStep1Response, error) {
+func (s *SRPAuthService) ComputeB(ctx context.Context, req models.AuthStep1Request) (*models.AuthStep1Response, error) {
 	log.Printf("[AuthService.ComputeB] Received Step 1 request for user '%s'", req.Username)
 
 	// Retrieve user credentials
@@ -102,7 +102,7 @@ func (s *AuthService) ComputeB(ctx context.Context, req models.AuthStep1Request)
 }
 
 // VerifyClientProof handles SRP step 2 (Client -> Server: A, M1) and returns Step 3 info (Server -> Client: M2)
-func (s *AuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error) {
+func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error) {
 	log.Printf("[AuthService.VerifyClientProof] Received Step 2 request for user '%s': ClientA=%s, ClientProofM1=%s",
 		req.Username, req.ClientA, req.ClientProofM1)
 

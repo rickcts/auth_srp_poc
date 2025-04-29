@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/tadglines/go-pkgs/crypto/srp"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/microsoft"
 )
 
 type SRPConfig struct {
@@ -38,9 +40,11 @@ type Config struct {
 	Port           string
 	JWTSecret      string
 	SRP            SRPConfig
+	OAuthProviders map[string]*oauth2.Config
 	DatabaseDriver string
 	// host=<host> port=<port> user=<user> dbname=<database> password=<pass> sslmode=<enable/disable>
 	DatabaseSettings string
+	StateCookieName  string
 }
 
 func Load() (*Config, error) {
@@ -114,8 +118,18 @@ func Load() (*Config, error) {
 			AuthStateExpiry:  srpAuthStateExpiry,
 			HashingAlgorithm: hashingAlgorithm,
 		},
+		OAuthProviders: map[string]*oauth2.Config{
+			"microsoft": {
+				ClientID:     getEnvOrDefault("MICROSOFT_CLIENT_ID", ""),
+				ClientSecret: getEnvOrDefault("MICROSOFT_CLIENT_SECRET", ""),
+				RedirectURL:  getEnvOrDefault("MICROSOFT_REDIRECT_URL", ""),
+				Scopes:       []string{"openid", "profile", "email", "offline_access", "User.Read"},
+				Endpoint:     microsoft.AzureADEndpoint("consumers"),
+			},
+		},
 		DatabaseSettings: databaseSettings,
 		DatabaseDriver:   "sqlite3",
+		StateCookieName:  "oauth_state",
 	}, nil
 
 }

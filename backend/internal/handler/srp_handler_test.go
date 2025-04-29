@@ -24,8 +24,8 @@ import (
 
 func setupTestApp(mockAuthService *mocks.MockAuthService) *fiber.App {
 	app := fiber.New()
-	authHandler := handler.NewAuthHandler(mockAuthService)
-	router.SetupRoutes(app, authHandler)
+	authHandler := handler.NewSRPAuthHandler(mockAuthService)
+	router.SetupSRPRoutes(app, authHandler)
 	return app
 }
 
@@ -45,7 +45,7 @@ func performRequest(app *fiber.App, method, path string, body any) *http.Respons
 
 func TestAuthHandler_Register(t *testing.T) {
 	// Common request data can stay outside
-	registerReq := models.RegisterRequest{
+	registerReq := models.SRPRegisterRequest{
 		Username: "newuser",
 		Salt:     "salt123",
 		Verifier: "verifier123",

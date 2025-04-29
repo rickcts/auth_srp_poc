@@ -11,26 +11,26 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// AuthHandler handles authentication-related HTTP requests
-type AuthHandler struct {
-	authService service.AuthGenerator
+// SRPAuthHandler handles authentication-related HTTP requests
+type SRPAuthHandler struct {
+	SRPAuthService service.SRPAuthGenerator
 }
 
-// NewAuthHandler creates a new AuthHandler
-func NewAuthHandler(authService service.AuthGenerator) *AuthHandler {
-	return &AuthHandler{authService: authService}
+// NewSRPAuthHandler creates a new AuthHandler
+func NewSRPAuthHandler(authService service.SRPAuthGenerator) *SRPAuthHandler {
+	return &SRPAuthHandler{SRPAuthService: authService}
 }
 
 // Register handles user registration requests
-func (h *AuthHandler) Register(c *fiber.Ctx) error {
-	req := new(models.RegisterRequest)
+func (h *SRPAuthHandler) Register(c *fiber.Ctx) error {
+	req := new(models.SRPRegisterRequest)
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
 	}
 
 	ctx := c.UserContext()
 
-	err := h.authService.Register(ctx, *req)
+	err := h.SRPAuthService.Register(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserExists) {
 			return c.Status(http.StatusConflict).JSON(models.ErrorResponse{Error: "Username already exists"})
@@ -43,7 +43,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 }
 
 // AuthStep1 handles the first step of the SRP authentication flow
-func (h *AuthHandler) AuthStep1(c *fiber.Ctx) error {
+func (h *SRPAuthHandler) AuthStep1(c *fiber.Ctx) error {
 	req := new(models.AuthStep1Request)
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
@@ -51,7 +51,7 @@ func (h *AuthHandler) AuthStep1(c *fiber.Ctx) error {
 
 	ctx := c.UserContext()
 
-	resp, err := h.authService.ComputeB(ctx, *req)
+	resp, err := h.SRPAuthService.ComputeB(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return c.Status(http.StatusNotFound).JSON(models.ErrorResponse{Error: "User not found"})
@@ -64,7 +64,7 @@ func (h *AuthHandler) AuthStep1(c *fiber.Ctx) error {
 }
 
 // AuthStep2 handles the verification of the client's proof M1
-func (h *AuthHandler) AuthStep2(c *fiber.Ctx) error {
+func (h *SRPAuthHandler) AuthStep2(c *fiber.Ctx) error {
 	req := new(models.AuthStep2Request) // Client sends M1 in this step
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
@@ -72,7 +72,7 @@ func (h *AuthHandler) AuthStep2(c *fiber.Ctx) error {
 
 	ctx := c.UserContext()
 
-	resp, err := h.authService.VerifyClientProof(ctx, *req)
+	resp, err := h.SRPAuthService.VerifyClientProof(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrStateNotFound) {
 			return c.Status(http.StatusUnauthorized).JSON(models.ErrorResponse{Error: "Authentication session expired or invalid"})
