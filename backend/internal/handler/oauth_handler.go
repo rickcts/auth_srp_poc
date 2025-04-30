@@ -13,12 +13,12 @@ import (
 
 // OAuthHandler handles authentication-related HTTP requests
 type OAuthHandler struct {
-	OAuthService *service.OAuthService
+	OAuthService service.OAuthProvider
 	Config       *config.Config
 }
 
 // NewOAuthHandler creates a new instance of AuthHandler
-func NewOAuthHandler(oauthService *service.OAuthService, cfg *config.Config) *OAuthHandler {
+func NewOAuthHandler(oauthService service.OAuthProvider, cfg *config.Config) *OAuthHandler {
 	return &OAuthHandler{
 		OAuthService: oauthService,
 		Config:       cfg,
@@ -100,17 +100,10 @@ func (h *OAuthHandler) Callback(c *fiber.Ctx) error {
 	}
 	log.Printf("Successfully logged in user: %s (%s)\n", user.DisplayName, user.Email)
 
-	// --- Post-Login Action ---
-	// TODO:
-	// 1. Store the token securely (e.g., in an encrypted session cookie or server-side session store).
-	//    Fiber has session middleware: github.com/gofiber/fiber/v2/middleware/session
-	// 2. Store user information in the session or database.
-	// 3. Redirect the user to a logged-in area (e.g., /dashboard, /welcome).
-
 	// For this example, just return the user info as JSON
 	return c.JSON(fiber.Map{
 		"message": "Login successful!",
 		"user":    user,
-		// "access_token": token.AccessToken, // Avoid sending tokens directly to client unless necessary
+		// "access_token": token.AccessToken,
 	})
 }

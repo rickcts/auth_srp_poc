@@ -42,3 +42,9 @@ type OAuthService struct {
 	OAuthConfig *oauth2.Config
 	API         string
 }
+
+type OAuthProvider interface {
+	GetAuthCodeURL(state string) string
+	ExchangeCode(ctx context.Context, code string) (*oauth2.Token, error)
+	GetUserInfo(ctx context.Context, token *oauth2.Token) (*models.OAuthUser, error)
+}

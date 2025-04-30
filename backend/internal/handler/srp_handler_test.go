@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestApp(mockAuthService *mocks.MockAuthService) *fiber.App {
+func setupTestApp(mockAuthService *mocks.MockSRPAuthService) *fiber.App {
 	app := fiber.New()
 	authHandler := handler.NewSRPAuthHandler(mockAuthService)
 	router.SetupSRPRoutes(app, authHandler)
@@ -53,12 +53,12 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		mockAuthService.On("Register", registerReq).Return(nil).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/register", registerReq)
+		resp := performRequest(app, "POST", "/api/auth/srp/register", registerReq)
 
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 		mockAuthService.AssertExpectations(t)
@@ -66,10 +66,10 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("BadRequestInvalidJSON", func(t *testing.T) {
 		// Setup inside subtest (need app, even if mock isn't called)
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
-		req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewBufferString("{invalid json"))
+		req := httptest.NewRequest("POST", "/api/auth/srp/register", bytes.NewBufferString("{invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		resp, _ := app.Test(req, -1)
 
@@ -82,13 +82,13 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("ConflictUserExists", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		serviceErr := fmt.Errorf("service layer message: %w", repository.ErrUserExists)
 		mockAuthService.On("Register", registerReq).Return(serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/register", registerReq)
+		resp := performRequest(app, "POST", "/api/auth/srp/register", registerReq)
 
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
 
@@ -101,13 +101,13 @@ func TestAuthHandler_Register(t *testing.T) {
 	})
 
 	t.Run("InternalServerError", func(t *testing.T) {
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		serviceErr := errors.New("some internal service error")
 		mockAuthService.On("Register", registerReq).Return(serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/register", registerReq)
+		resp := performRequest(app, "POST", "/api/auth/srp/register", registerReq)
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
@@ -126,12 +126,12 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 	step1Resp := models.AuthStep1Response{Salt: "salt123", ServerB: "serverB123"}
 
 	t.Run("Success", func(t *testing.T) {
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		mockAuthService.On("ComputeB", step1Req).Return(&step1Resp, nil).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step1", step1Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step1", step1Req)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -144,10 +144,10 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 	})
 
 	t.Run("BadRequestInvalidJSON", func(t *testing.T) {
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
-		req := httptest.NewRequest("POST", "/api/auth/login/step1", bytes.NewBufferString("{invalid json"))
+		req := httptest.NewRequest("POST", "/api/auth/srp/login/step1", bytes.NewBufferString("{invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		resp, _ := app.Test(req, -1)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -156,14 +156,14 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 	})
 
 	t.Run("UserNotFound", func(t *testing.T) {
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		// Simulate service returning ErrUserNotFound (wrapped)
 		serviceErr := fmt.Errorf("service layer message: %w", repository.ErrUserNotFound)
 		mockAuthService.On("ComputeB", step1Req).Return(nil, serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step1", step1Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step1", step1Req)
 
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
@@ -177,13 +177,13 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 
 	t.Run("InternalServerError", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		serviceErr := errors.New("some internal service error")
 		mockAuthService.On("ComputeB", step1Req).Return(nil, serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step1", step1Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step1", step1Req)
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
@@ -210,12 +210,12 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		mockAuthService.On("VerifyClientProof", step2Req).Return(&step2Resp, nil).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step2", step2Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step2", step2Req)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -229,10 +229,10 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 	t.Run("BadRequestInvalidJSON", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
-		req := httptest.NewRequest("POST", "/api/auth/login/step2", bytes.NewBufferString("{invalid json"))
+		req := httptest.NewRequest("POST", "/api/auth/srp/login/step2", bytes.NewBufferString("{invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		resp, _ := app.Test(req, -1)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -242,14 +242,14 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 	t.Run("UnauthorizedStateNotFound", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		// Simulate service returning ErrStateNotFound (wrapped)
 		serviceErr := fmt.Errorf("service layer message: %w", repository.ErrStateNotFound)
 		mockAuthService.On("VerifyClientProof", step2Req).Return(nil, serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step2", step2Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step2", step2Req)
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -263,13 +263,13 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 	t.Run("UnauthorizedInvalidProof", func(t *testing.T) {
 		// Setup inside subtest
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		serviceErr := errors.New("client proof M1 verification failed")
 		mockAuthService.On("VerifyClientProof", step2Req).Return(nil, serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step2", step2Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step2", step2Req)
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -282,13 +282,13 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 	})
 
 	t.Run("InternalServerError", func(t *testing.T) {
-		mockAuthService := new(mocks.MockAuthService)
+		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
 		serviceErr := errors.New("some other internal service error")
 		mockAuthService.On("VerifyClientProof", step2Req).Return(nil, serviceErr).Once()
 
-		resp := performRequest(app, "POST", "/api/auth/login/step2", step2Req)
+		resp := performRequest(app, "POST", "/api/auth/srp/login/step2", step2Req)
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 

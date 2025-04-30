@@ -133,7 +133,7 @@ export function AuthForm({
                 verifier: verifierBuffer.toString('hex'),
             };
             console.log("[SRP Register] Sending registration data to backend:", registrationData);
-            await axios.post(`${API_BASE_URL}api/auth/register`, registrationData);
+            await axios.post(`${API_BASE_URL}api/auth/srp/register`, registrationData);
 
             console.log(`[SRP Register] Registration successful for: ${identity}`); // Log success
             setMessage({ type: 'success', text: `User "${identity}" registered successfully. You can now log in.` });
@@ -178,7 +178,7 @@ export function AuthForm({
             const step1Data = { username: identity };
             console.log("[SRP Login Step 1] Sending username to backend:", step1Data);
             // *** Ensure your backend endpoint is correct if different ***
-            const res = await axios.post<{ s: string; B: string }>(`${API_BASE_URL}api/auth/login/step1`, step1Data); // Corrected type for response
+            const res = await axios.post<{ s: string; B: string }>(`${API_BASE_URL}api/auth/srp/login/step1`, step1Data); // Corrected type for response
 
             const { s, B } = res.data;
             if (!s || !B) {
@@ -208,7 +208,7 @@ export function AuthForm({
                 M1: M1.toString('hex'), // Client proof 'M1'
             };
             // *** Ensure your backend endpoint is correct if different ***
-            const step2Response = await axios.post<{ M2: string }>(`${API_BASE_URL}api/auth/login/step2`, step2Data); // Expect M2
+            const step2Response = await axios.post<{ M2: string }>(`${API_BASE_URL}api/auth/srp/login/step2`, step2Data); // Expect M2
 
             // === SRP Step 3: Server -> Client (Receive M2) ===
              const { M2 } = step2Response.data;
@@ -253,13 +253,7 @@ export function AuthForm({
     // --- Microsoft Login Handler ---
     const handleMicrosoftLogin = () => {
         clearMessage(); // Clear any previous messages
-        // Open a new window for Microsoft login
-        const width = 600;
-        const height = 600;
-        const left = window.innerWidth / 2 - width / 2;
-        const top = window.innerHeight / 2 - height / 2;
-        const popupWindow = window.open(`${API_BASE_URL}api/auth/oauth/microsoft/login`, '_blank', `width=${width},height=${height},left=${left},top=${top}`);
-        if (popupWindow) popupWindow.focus();
+        window.location.href = `${API_BASE_URL}api/auth/oauth/microsoft/login`;
     };
     
     // --- Google Login Handler (Placeholder) ---
@@ -505,7 +499,7 @@ export function AuthForm({
                                     type="button" // Important: Set type to "button"
                                     aria-label={isLoginMode ? "Sign in with Google" : "Sign up with Google"}
                                     onClick={handleGoogleLogin} // Add a placeholder handler
-                                    disabled={isLoading} // Disable if another operation is in progress
+                                    disabled={true} // Disable if another operation is in progress
                                 >
                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 mr-2"> <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" fill="currentColor" /> </svg>
                                     Google
