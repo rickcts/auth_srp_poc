@@ -2,13 +2,14 @@ package handler_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"github.com/rickcts/srp/internal/handler"
 	"github.com/rickcts/srp/internal/mocks"

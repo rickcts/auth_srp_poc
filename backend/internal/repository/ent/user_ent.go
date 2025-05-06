@@ -2,8 +2,9 @@ package ent_repo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+
+	"github.com/goccy/go-json"
 
 	"github.com/rickcts/srp/ent"
 	"github.com/rickcts/srp/ent/userauth"

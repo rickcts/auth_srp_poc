@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/goccy/go-json"
 
 	"github.com/rickcts/srp/internal/config"
 	"github.com/rickcts/srp/internal/models"
