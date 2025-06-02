@@ -10,8 +10,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauthevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauthevent"
 )
 
 // UserAuthEventCreate is the builder for creating a UserAuthEvent entity.
@@ -22,7 +22,7 @@ type UserAuthEventCreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (uaec *UserAuthEventCreate) SetUserID(i int) *UserAuthEventCreate {
+func (uaec *UserAuthEventCreate) SetUserID(i int64) *UserAuthEventCreate {
 	uaec.mutation.SetUserID(i)
 	return uaec
 }
@@ -171,7 +171,7 @@ func (uaec *UserAuthEventCreate) createSpec() (*UserAuthEvent, *sqlgraph.CreateS
 			Columns: []string{userauthevent.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

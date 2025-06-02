@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rickcts/srp/ent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent"
 )
 
 // The UserFunc type is an adapter to allow the use of ordinary
@@ -19,6 +19,18 @@ func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
+}
+
+// The UserAccessEventFunc type is an adapter to allow the use of ordinary
+// function as UserAccessEvent mutator.
+type UserAccessEventFunc func(context.Context, *ent.UserAccessEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserAccessEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserAccessEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserAccessEventMutation", m)
 }
 
 // The UserAuthFunc type is an adapter to allow the use of ordinary

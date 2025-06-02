@@ -9,8 +9,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauth"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauth"
 )
 
 // UserAuthCreate is the builder for creating a UserAuth entity.
@@ -21,7 +21,7 @@ type UserAuthCreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (uac *UserAuthCreate) SetUserID(i int) *UserAuthCreate {
+func (uac *UserAuthCreate) SetUserID(i int64) *UserAuthCreate {
 	uac.mutation.SetUserID(i)
 	return uac
 }
@@ -144,7 +144,7 @@ func (uac *UserAuthCreate) createSpec() (*UserAuth, *sqlgraph.CreateSpec) {
 			Columns: []string{userauth.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

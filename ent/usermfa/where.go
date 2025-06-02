@@ -5,7 +5,7 @@ package usermfa
 import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/rickcts/srp/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
 )
 
 // ID filters vertices based on their ID field.
@@ -54,13 +54,13 @@ func IDLTE(id int) predicate.UserMFA {
 }
 
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v int) predicate.UserMFA {
+func UserID(v int64) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldEQ(FieldUserID, v))
 }
 
-// Method applies equality check predicate on the "method" field. It's identical to MethodEQ.
-func Method(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldEQ(FieldMethod, v))
+// MfaMethod applies equality check predicate on the "mfa_method" field. It's identical to MfaMethodEQ.
+func MfaMethod(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldEQ(FieldMfaMethod, v))
 }
 
 // Params applies equality check predicate on the "params" field. It's identical to ParamsEQ.
@@ -69,88 +69,88 @@ func Params(v string) predicate.UserMFA {
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v int) predicate.UserMFA {
+func UserIDEQ(v int64) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldEQ(FieldUserID, v))
 }
 
 // UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v int) predicate.UserMFA {
+func UserIDNEQ(v int64) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldNEQ(FieldUserID, v))
 }
 
 // UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...int) predicate.UserMFA {
+func UserIDIn(vs ...int64) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldIn(FieldUserID, vs...))
 }
 
 // UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...int) predicate.UserMFA {
+func UserIDNotIn(vs ...int64) predicate.UserMFA {
 	return predicate.UserMFA(sql.FieldNotIn(FieldUserID, vs...))
 }
 
-// MethodEQ applies the EQ predicate on the "method" field.
-func MethodEQ(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldEQ(FieldMethod, v))
+// MfaMethodEQ applies the EQ predicate on the "mfa_method" field.
+func MfaMethodEQ(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldEQ(FieldMfaMethod, v))
 }
 
-// MethodNEQ applies the NEQ predicate on the "method" field.
-func MethodNEQ(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldNEQ(FieldMethod, v))
+// MfaMethodNEQ applies the NEQ predicate on the "mfa_method" field.
+func MfaMethodNEQ(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldNEQ(FieldMfaMethod, v))
 }
 
-// MethodIn applies the In predicate on the "method" field.
-func MethodIn(vs ...string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldIn(FieldMethod, vs...))
+// MfaMethodIn applies the In predicate on the "mfa_method" field.
+func MfaMethodIn(vs ...string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldIn(FieldMfaMethod, vs...))
 }
 
-// MethodNotIn applies the NotIn predicate on the "method" field.
-func MethodNotIn(vs ...string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldNotIn(FieldMethod, vs...))
+// MfaMethodNotIn applies the NotIn predicate on the "mfa_method" field.
+func MfaMethodNotIn(vs ...string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldNotIn(FieldMfaMethod, vs...))
 }
 
-// MethodGT applies the GT predicate on the "method" field.
-func MethodGT(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldGT(FieldMethod, v))
+// MfaMethodGT applies the GT predicate on the "mfa_method" field.
+func MfaMethodGT(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldGT(FieldMfaMethod, v))
 }
 
-// MethodGTE applies the GTE predicate on the "method" field.
-func MethodGTE(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldGTE(FieldMethod, v))
+// MfaMethodGTE applies the GTE predicate on the "mfa_method" field.
+func MfaMethodGTE(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldGTE(FieldMfaMethod, v))
 }
 
-// MethodLT applies the LT predicate on the "method" field.
-func MethodLT(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldLT(FieldMethod, v))
+// MfaMethodLT applies the LT predicate on the "mfa_method" field.
+func MfaMethodLT(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldLT(FieldMfaMethod, v))
 }
 
-// MethodLTE applies the LTE predicate on the "method" field.
-func MethodLTE(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldLTE(FieldMethod, v))
+// MfaMethodLTE applies the LTE predicate on the "mfa_method" field.
+func MfaMethodLTE(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldLTE(FieldMfaMethod, v))
 }
 
-// MethodContains applies the Contains predicate on the "method" field.
-func MethodContains(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldContains(FieldMethod, v))
+// MfaMethodContains applies the Contains predicate on the "mfa_method" field.
+func MfaMethodContains(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldContains(FieldMfaMethod, v))
 }
 
-// MethodHasPrefix applies the HasPrefix predicate on the "method" field.
-func MethodHasPrefix(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldHasPrefix(FieldMethod, v))
+// MfaMethodHasPrefix applies the HasPrefix predicate on the "mfa_method" field.
+func MfaMethodHasPrefix(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldHasPrefix(FieldMfaMethod, v))
 }
 
-// MethodHasSuffix applies the HasSuffix predicate on the "method" field.
-func MethodHasSuffix(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldHasSuffix(FieldMethod, v))
+// MfaMethodHasSuffix applies the HasSuffix predicate on the "mfa_method" field.
+func MfaMethodHasSuffix(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldHasSuffix(FieldMfaMethod, v))
 }
 
-// MethodEqualFold applies the EqualFold predicate on the "method" field.
-func MethodEqualFold(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldEqualFold(FieldMethod, v))
+// MfaMethodEqualFold applies the EqualFold predicate on the "mfa_method" field.
+func MfaMethodEqualFold(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldEqualFold(FieldMfaMethod, v))
 }
 
-// MethodContainsFold applies the ContainsFold predicate on the "method" field.
-func MethodContainsFold(v string) predicate.UserMFA {
-	return predicate.UserMFA(sql.FieldContainsFold(FieldMethod, v))
+// MfaMethodContainsFold applies the ContainsFold predicate on the "mfa_method" field.
+func MfaMethodContainsFold(v string) predicate.UserMFA {
+	return predicate.UserMFA(sql.FieldContainsFold(FieldMfaMethod, v))
 }
 
 // ParamsEQ applies the EQ predicate on the "params" field.

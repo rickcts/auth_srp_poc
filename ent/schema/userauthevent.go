@@ -14,7 +14,7 @@ type UserAuthEvent struct {
 // Fields of the UserAuth.
 func (UserAuthEvent) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id"),
+		field.Int64("user_id"),
 		field.Int64("auth_provider"),
 		field.String("host"),
 		field.Time("timestamp"),

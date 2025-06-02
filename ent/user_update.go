@@ -6,15 +6,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/predicate"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauth"
-	"github.com/rickcts/srp/ent/userauthevent"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/useraccessevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauth"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauthevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -30,16 +32,16 @@ func (uu *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	return uu
 }
 
-// SetName sets the "name" field.
-func (uu *UserUpdate) SetName(s string) *UserUpdate {
-	uu.mutation.SetName(s)
+// SetDisplayName sets the "display_name" field.
+func (uu *UserUpdate) SetDisplayName(s string) *UserUpdate {
+	uu.mutation.SetDisplayName(s)
 	return uu
 }
 
-// SetNillableName sets the "name" field if the given value is not nil.
-func (uu *UserUpdate) SetNillableName(s *string) *UserUpdate {
+// SetNillableDisplayName sets the "display_name" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableDisplayName(s *string) *UserUpdate {
 	if s != nil {
-		uu.SetName(*s)
+		uu.SetDisplayName(*s)
 	}
 	return uu
 }
@@ -55,6 +57,32 @@ func (uu *UserUpdate) SetNillableState(s *string) *UserUpdate {
 	if s != nil {
 		uu.SetState(*s)
 	}
+	return uu
+}
+
+// SetActivatedAt sets the "activated_at" field.
+func (uu *UserUpdate) SetActivatedAt(t time.Time) *UserUpdate {
+	uu.mutation.SetActivatedAt(t)
+	return uu
+}
+
+// SetNillableActivatedAt sets the "activated_at" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableActivatedAt(t *time.Time) *UserUpdate {
+	if t != nil {
+		uu.SetActivatedAt(*t)
+	}
+	return uu
+}
+
+// ClearActivatedAt clears the value of the "activated_at" field.
+func (uu *UserUpdate) ClearActivatedAt() *UserUpdate {
+	uu.mutation.ClearActivatedAt()
+	return uu
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (uu *UserUpdate) SetUpdatedAt(t time.Time) *UserUpdate {
+	uu.mutation.SetUpdatedAt(t)
 	return uu
 }
 
@@ -86,6 +114,21 @@ func (uu *UserUpdate) AddUserMFA(u ...*UserMFA) *UserUpdate {
 		ids[i] = u[i].ID
 	}
 	return uu.AddUserMFAIDs(ids...)
+}
+
+// AddUserAccessEventIDs adds the "userAccessEvent" edge to the UserAccessEvent entity by IDs.
+func (uu *UserUpdate) AddUserAccessEventIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddUserAccessEventIDs(ids...)
+	return uu
+}
+
+// AddUserAccessEvent adds the "userAccessEvent" edges to the UserAccessEvent entity.
+func (uu *UserUpdate) AddUserAccessEvent(u ...*UserAccessEvent) *UserUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uu.AddUserAccessEventIDs(ids...)
 }
 
 // AddUserAuthEventIDs adds the "userAuthEvent" edge to the UserAuthEvent entity by IDs.
@@ -150,6 +193,27 @@ func (uu *UserUpdate) RemoveUserMFA(u ...*UserMFA) *UserUpdate {
 	return uu.RemoveUserMFAIDs(ids...)
 }
 
+// ClearUserAccessEvent clears all "userAccessEvent" edges to the UserAccessEvent entity.
+func (uu *UserUpdate) ClearUserAccessEvent() *UserUpdate {
+	uu.mutation.ClearUserAccessEvent()
+	return uu
+}
+
+// RemoveUserAccessEventIDs removes the "userAccessEvent" edge to UserAccessEvent entities by IDs.
+func (uu *UserUpdate) RemoveUserAccessEventIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveUserAccessEventIDs(ids...)
+	return uu
+}
+
+// RemoveUserAccessEvent removes "userAccessEvent" edges to UserAccessEvent entities.
+func (uu *UserUpdate) RemoveUserAccessEvent(u ...*UserAccessEvent) *UserUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uu.RemoveUserAccessEventIDs(ids...)
+}
+
 // ClearUserAuthEvent clears all "userAuthEvent" edges to the UserAuthEvent entity.
 func (uu *UserUpdate) ClearUserAuthEvent() *UserUpdate {
 	uu.mutation.ClearUserAuthEvent()
@@ -173,6 +237,7 @@ func (uu *UserUpdate) RemoveUserAuthEvent(u ...*UserAuthEvent) *UserUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (uu *UserUpdate) Save(ctx context.Context) (int, error) {
+	uu.defaults()
 	return withHooks(ctx, uu.sqlSave, uu.mutation, uu.hooks)
 }
 
@@ -198,8 +263,34 @@ func (uu *UserUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (uu *UserUpdate) defaults() {
+	if _, ok := uu.mutation.UpdatedAt(); !ok {
+		v := user.UpdateDefaultUpdatedAt()
+		uu.mutation.SetUpdatedAt(v)
+	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (uu *UserUpdate) check() error {
+	if v, ok := uu.mutation.DisplayName(); ok {
+		if err := user.DisplayNameValidator(v); err != nil {
+			return &ValidationError{Name: "display_name", err: fmt.Errorf(`ent: validator failed for field "User.display_name": %w`, err)}
+		}
+	}
+	if v, ok := uu.mutation.State(); ok {
+		if err := user.StateValidator(v); err != nil {
+			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "User.state": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
+	if err := uu.check(); err != nil {
+		return n, err
+	}
+	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64))
 	if ps := uu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -207,11 +298,20 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := uu.mutation.Name(); ok {
-		_spec.SetField(user.FieldName, field.TypeString, value)
+	if value, ok := uu.mutation.DisplayName(); ok {
+		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
 	}
 	if value, ok := uu.mutation.State(); ok {
 		_spec.SetField(user.FieldState, field.TypeString, value)
+	}
+	if value, ok := uu.mutation.ActivatedAt(); ok {
+		_spec.SetField(user.FieldActivatedAt, field.TypeTime, value)
+	}
+	if uu.mutation.ActivatedAtCleared() {
+		_spec.ClearField(user.FieldActivatedAt, field.TypeTime)
+	}
+	if value, ok := uu.mutation.UpdatedAt(); ok {
+		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uu.mutation.UserAuthCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -303,6 +403,51 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.UserAccessEventCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UserAccessEventTable,
+			Columns: []string{user.UserAccessEventColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(useraccessevent.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedUserAccessEventIDs(); len(nodes) > 0 && !uu.mutation.UserAccessEventCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UserAccessEventTable,
+			Columns: []string{user.UserAccessEventColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(useraccessevent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.UserAccessEventIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UserAccessEventTable,
+			Columns: []string{user.UserAccessEventColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(useraccessevent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if uu.mutation.UserAuthEventCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -368,16 +513,16 @@ type UserUpdateOne struct {
 	mutation *UserMutation
 }
 
-// SetName sets the "name" field.
-func (uuo *UserUpdateOne) SetName(s string) *UserUpdateOne {
-	uuo.mutation.SetName(s)
+// SetDisplayName sets the "display_name" field.
+func (uuo *UserUpdateOne) SetDisplayName(s string) *UserUpdateOne {
+	uuo.mutation.SetDisplayName(s)
 	return uuo
 }
 
-// SetNillableName sets the "name" field if the given value is not nil.
-func (uuo *UserUpdateOne) SetNillableName(s *string) *UserUpdateOne {
+// SetNillableDisplayName sets the "display_name" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableDisplayName(s *string) *UserUpdateOne {
 	if s != nil {
-		uuo.SetName(*s)
+		uuo.SetDisplayName(*s)
 	}
 	return uuo
 }
@@ -393,6 +538,32 @@ func (uuo *UserUpdateOne) SetNillableState(s *string) *UserUpdateOne {
 	if s != nil {
 		uuo.SetState(*s)
 	}
+	return uuo
+}
+
+// SetActivatedAt sets the "activated_at" field.
+func (uuo *UserUpdateOne) SetActivatedAt(t time.Time) *UserUpdateOne {
+	uuo.mutation.SetActivatedAt(t)
+	return uuo
+}
+
+// SetNillableActivatedAt sets the "activated_at" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableActivatedAt(t *time.Time) *UserUpdateOne {
+	if t != nil {
+		uuo.SetActivatedAt(*t)
+	}
+	return uuo
+}
+
+// ClearActivatedAt clears the value of the "activated_at" field.
+func (uuo *UserUpdateOne) ClearActivatedAt() *UserUpdateOne {
+	uuo.mutation.ClearActivatedAt()
+	return uuo
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (uuo *UserUpdateOne) SetUpdatedAt(t time.Time) *UserUpdateOne {
+	uuo.mutation.SetUpdatedAt(t)
 	return uuo
 }
 
@@ -424,6 +595,21 @@ func (uuo *UserUpdateOne) AddUserMFA(u ...*UserMFA) *UserUpdateOne {
 		ids[i] = u[i].ID
 	}
 	return uuo.AddUserMFAIDs(ids...)
+}
+
+// AddUserAccessEventIDs adds the "userAccessEvent" edge to the UserAccessEvent entity by IDs.
+func (uuo *UserUpdateOne) AddUserAccessEventIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddUserAccessEventIDs(ids...)
+	return uuo
+}
+
+// AddUserAccessEvent adds the "userAccessEvent" edges to the UserAccessEvent entity.
+func (uuo *UserUpdateOne) AddUserAccessEvent(u ...*UserAccessEvent) *UserUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uuo.AddUserAccessEventIDs(ids...)
 }
 
 // AddUserAuthEventIDs adds the "userAuthEvent" edge to the UserAuthEvent entity by IDs.
@@ -488,6 +674,27 @@ func (uuo *UserUpdateOne) RemoveUserMFA(u ...*UserMFA) *UserUpdateOne {
 	return uuo.RemoveUserMFAIDs(ids...)
 }
 
+// ClearUserAccessEvent clears all "userAccessEvent" edges to the UserAccessEvent entity.
+func (uuo *UserUpdateOne) ClearUserAccessEvent() *UserUpdateOne {
+	uuo.mutation.ClearUserAccessEvent()
+	return uuo
+}
+
+// RemoveUserAccessEventIDs removes the "userAccessEvent" edge to UserAccessEvent entities by IDs.
+func (uuo *UserUpdateOne) RemoveUserAccessEventIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveUserAccessEventIDs(ids...)
+	return uuo
+}
+
+// RemoveUserAccessEvent removes "userAccessEvent" edges to UserAccessEvent entities.
+func (uuo *UserUpdateOne) RemoveUserAccessEvent(u ...*UserAccessEvent) *UserUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uuo.RemoveUserAccessEventIDs(ids...)
+}
+
 // ClearUserAuthEvent clears all "userAuthEvent" edges to the UserAuthEvent entity.
 func (uuo *UserUpdateOne) ClearUserAuthEvent() *UserUpdateOne {
 	uuo.mutation.ClearUserAuthEvent()
@@ -524,6 +731,7 @@ func (uuo *UserUpdateOne) Select(field string, fields ...string) *UserUpdateOne 
 
 // Save executes the query and returns the updated User entity.
 func (uuo *UserUpdateOne) Save(ctx context.Context) (*User, error) {
+	uuo.defaults()
 	return withHooks(ctx, uuo.sqlSave, uuo.mutation, uuo.hooks)
 }
 
@@ -549,8 +757,34 @@ func (uuo *UserUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (uuo *UserUpdateOne) defaults() {
+	if _, ok := uuo.mutation.UpdatedAt(); !ok {
+		v := user.UpdateDefaultUpdatedAt()
+		uuo.mutation.SetUpdatedAt(v)
+	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (uuo *UserUpdateOne) check() error {
+	if v, ok := uuo.mutation.DisplayName(); ok {
+		if err := user.DisplayNameValidator(v); err != nil {
+			return &ValidationError{Name: "display_name", err: fmt.Errorf(`ent: validator failed for field "User.display_name": %w`, err)}
+		}
+	}
+	if v, ok := uuo.mutation.State(); ok {
+		if err := user.StateValidator(v); err != nil {
+			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "User.state": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
-	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
+	if err := uuo.check(); err != nil {
+		return _node, err
+	}
+	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64))
 	id, ok := uuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "User.id" for update`)}
@@ -575,11 +809,20 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			}
 		}
 	}
-	if value, ok := uuo.mutation.Name(); ok {
-		_spec.SetField(user.FieldName, field.TypeString, value)
+	if value, ok := uuo.mutation.DisplayName(); ok {
+		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
 	}
 	if value, ok := uuo.mutation.State(); ok {
 		_spec.SetField(user.FieldState, field.TypeString, value)
+	}
+	if value, ok := uuo.mutation.ActivatedAt(); ok {
+		_spec.SetField(user.FieldActivatedAt, field.TypeTime, value)
+	}
+	if uuo.mutation.ActivatedAtCleared() {
+		_spec.ClearField(user.FieldActivatedAt, field.TypeTime)
+	}
+	if value, ok := uuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uuo.mutation.UserAuthCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -664,6 +907,51 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usermfa.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.UserAccessEventCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UserAccessEventTable,
+			Columns: []string{user.UserAccessEventColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(useraccessevent.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedUserAccessEventIDs(); len(nodes) > 0 && !uuo.mutation.UserAccessEventCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UserAccessEventTable,
+			Columns: []string{user.UserAccessEventColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(useraccessevent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.UserAccessEventIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UserAccessEventTable,
+			Columns: []string{user.UserAccessEventColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(useraccessevent.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

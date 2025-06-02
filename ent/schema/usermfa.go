@@ -14,7 +14,7 @@ type UserMFA struct {
 // Fields of the UserMFA.
 func (UserMFA) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id"),
+		field.Int64("user_id"),
 		field.String("mfa_method").Comment("SMS, EMAIL, NUM_MATCH, etc."),
 		field.String("params").Optional(),
 	}

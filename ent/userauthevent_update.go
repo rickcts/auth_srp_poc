@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/predicate"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauthevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauthevent"
 )
 
 // UserAuthEventUpdate is the builder for updating UserAuthEvent entities.
@@ -30,13 +30,13 @@ func (uaeu *UserAuthEventUpdate) Where(ps ...predicate.UserAuthEvent) *UserAuthE
 }
 
 // SetUserID sets the "user_id" field.
-func (uaeu *UserAuthEventUpdate) SetUserID(i int) *UserAuthEventUpdate {
+func (uaeu *UserAuthEventUpdate) SetUserID(i int64) *UserAuthEventUpdate {
 	uaeu.mutation.SetUserID(i)
 	return uaeu
 }
 
 // SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (uaeu *UserAuthEventUpdate) SetNillableUserID(i *int) *UserAuthEventUpdate {
+func (uaeu *UserAuthEventUpdate) SetNillableUserID(i *int64) *UserAuthEventUpdate {
 	if i != nil {
 		uaeu.SetUserID(*i)
 	}
@@ -229,7 +229,7 @@ func (uaeu *UserAuthEventUpdate) sqlSave(ctx context.Context) (n int, err error)
 			Columns: []string{userauthevent.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -242,7 +242,7 @@ func (uaeu *UserAuthEventUpdate) sqlSave(ctx context.Context) (n int, err error)
 			Columns: []string{userauthevent.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -271,13 +271,13 @@ type UserAuthEventUpdateOne struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (uaeuo *UserAuthEventUpdateOne) SetUserID(i int) *UserAuthEventUpdateOne {
+func (uaeuo *UserAuthEventUpdateOne) SetUserID(i int64) *UserAuthEventUpdateOne {
 	uaeuo.mutation.SetUserID(i)
 	return uaeuo
 }
 
 // SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (uaeuo *UserAuthEventUpdateOne) SetNillableUserID(i *int) *UserAuthEventUpdateOne {
+func (uaeuo *UserAuthEventUpdateOne) SetNillableUserID(i *int64) *UserAuthEventUpdateOne {
 	if i != nil {
 		uaeuo.SetUserID(*i)
 	}
@@ -500,7 +500,7 @@ func (uaeuo *UserAuthEventUpdateOne) sqlSave(ctx context.Context) (_node *UserAu
 			Columns: []string{userauthevent.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -513,7 +513,7 @@ func (uaeuo *UserAuthEventUpdateOne) sqlSave(ctx context.Context) (_node *UserAu
 			Columns: []string{userauthevent.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

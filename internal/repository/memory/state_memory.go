@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rickcts/srp/internal/models"
-	"github.com/rickcts/srp/internal/repository"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 )
 
 // MemoryStateRepository implements StateRepository in memory (NOT FOR PRODUCTION)

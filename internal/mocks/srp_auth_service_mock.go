@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/rickcts/srp/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -27,4 +27,19 @@ func (m *MockSRPAuthService) VerifyClientProof(ctx context.Context, req models.A
 	args := m.Called(req)
 	resp, _ := args.Get(0).(*models.AuthStep3Response)
 	return resp, args.Error(1)
+}
+
+func (m *MockSRPAuthService) ChangePassword(ctx context.Context, authID string, req models.ChangePasswordRequest) error {
+	args := m.Called(authID, req)
+	return args.Error(0)
+}
+
+func (m *MockSRPAuthService) InitiatePasswordReset(ctx context.Context, req models.InitiatePasswordResetRequest) error {
+	args := m.Called(ctx, req)
+	return args.Error(0)
+}
+
+func (m *MockSRPAuthService) CompletePasswordReset(ctx context.Context, req models.CompletePasswordResetRequest) error {
+	args := m.Called(ctx, req)
+	return args.Error(0)
 }

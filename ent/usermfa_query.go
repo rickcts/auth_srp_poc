@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/predicate"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // UserMFAQuery is the builder for querying UserMFA entities.
@@ -298,7 +298,7 @@ func (umq *UserMFAQuery) WithUser(opts ...func(*UserQuery)) *UserMFAQuery {
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		UserID int64 `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -321,7 +321,7 @@ func (umq *UserMFAQuery) GroupBy(field string, fields ...string) *UserMFAGroupBy
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		UserID int64 `json:"user_id,omitempty"`
 //	}
 //
 //	client.UserMFA.Query().
@@ -402,8 +402,8 @@ func (umq *UserMFAQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Use
 }
 
 func (umq *UserMFAQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UserMFA, init func(*UserMFA), assign func(*UserMFA, *User)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UserMFA)
+	ids := make([]int64, 0, len(nodes))
+	nodeids := make(map[int64][]*UserMFA)
 	for i := range nodes {
 		fk := nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {

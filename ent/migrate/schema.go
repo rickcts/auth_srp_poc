@@ -10,9 +10,12 @@ import (
 var (
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "name", Type: field.TypeString, Unique: true},
-		{Name: "state", Type: field.TypeString},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "display_name", Type: field.TypeString, Size: 63},
+		{Name: "state", Type: field.TypeString, Size: 15},
+		{Name: "activated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -20,13 +23,37 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// UserAccessEventsColumns holds the columns for the "user_access_events" table.
+	UserAccessEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "host_from", Type: field.TypeString, Size: 255},
+		{Name: "api_method", Type: field.TypeString, Size: 15},
+		{Name: "api_path", Type: field.TypeString, Size: 255},
+		{Name: "api_path_extras", Type: field.TypeString, Size: 2147483647},
+		{Name: "response_code", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// UserAccessEventsTable holds the schema information for the "user_access_events" table.
+	UserAccessEventsTable = &schema.Table{
+		Name:       "user_access_events",
+		Columns:    UserAccessEventsColumns,
+		PrimaryKey: []*schema.Column{UserAccessEventsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_access_events_users_userAccessEvent",
+				Columns:    []*schema.Column{UserAccessEventsColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// UserAuthsColumns holds the columns for the "user_auths" table.
 	UserAuthsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "auth_extras", Type: field.TypeString, Size: 2147483647},
-		{Name: "auth_provider", Type: field.TypeString, Unique: true},
+		{Name: "auth_provider", Type: field.TypeString},
 		{Name: "auth_id", Type: field.TypeString},
-		{Name: "user_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserAuthsTable holds the schema information for the "user_auths" table.
 	UserAuthsTable = &schema.Table{
@@ -50,7 +77,7 @@ var (
 		{Name: "timestamp", Type: field.TypeTime},
 		{Name: "ns", Type: field.TypeInt64},
 		{Name: "error_code", Type: field.TypeInt},
-		{Name: "user_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserAuthEventsTable holds the schema information for the "user_auth_events" table.
 	UserAuthEventsTable = &schema.Table{
@@ -69,9 +96,9 @@ var (
 	// UserMfAsColumns holds the columns for the "user_mf_as" table.
 	UserMfAsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "method", Type: field.TypeString},
+		{Name: "mfa_method", Type: field.TypeString},
 		{Name: "params", Type: field.TypeString, Nullable: true},
-		{Name: "user_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserMfAsTable holds the schema information for the "user_mf_as" table.
 	UserMfAsTable = &schema.Table{
@@ -90,6 +117,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		UsersTable,
+		UserAccessEventsTable,
 		UserAuthsTable,
 		UserAuthEventsTable,
 		UserMfAsTable,
@@ -97,6 +125,7 @@ var (
 )
 
 func init() {
+	UserAccessEventsTable.ForeignKeys[0].RefTable = UsersTable
 	UserAuthsTable.ForeignKeys[0].RefTable = UsersTable
 	UserAuthEventsTable.ForeignKeys[0].RefTable = UsersTable
 	UserMfAsTable.ForeignKeys[0].RefTable = UsersTable

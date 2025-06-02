@@ -5,21 +5,28 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/rickcts/srp/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
 )
 
 // User is the model entity for the User schema.
 type User struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
-	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
+	ID int64 `json:"id,omitempty"`
+	// DisplayName holds the value of the "display_name" field.
+	DisplayName string `json:"display_name,omitempty"`
 	// State holds the value of the "state" field.
 	State string `json:"state,omitempty"`
+	// ActivatedAt holds the value of the "activated_at" field.
+	ActivatedAt time.Time `json:"activated_at,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -32,11 +39,13 @@ type UserEdges struct {
 	UserAuth []*UserAuth `json:"userAuth,omitempty"`
 	// UserMFA holds the value of the userMFA edge.
 	UserMFA []*UserMFA `json:"userMFA,omitempty"`
+	// UserAccessEvent holds the value of the userAccessEvent edge.
+	UserAccessEvent []*UserAccessEvent `json:"userAccessEvent,omitempty"`
 	// UserAuthEvent holds the value of the userAuthEvent edge.
 	UserAuthEvent []*UserAuthEvent `json:"userAuthEvent,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // UserAuthOrErr returns the UserAuth value or an error if the edge
@@ -57,10 +66,19 @@ func (e UserEdges) UserMFAOrErr() ([]*UserMFA, error) {
 	return nil, &NotLoadedError{edge: "userMFA"}
 }
 
+// UserAccessEventOrErr returns the UserAccessEvent value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) UserAccessEventOrErr() ([]*UserAccessEvent, error) {
+	if e.loadedTypes[2] {
+		return e.UserAccessEvent, nil
+	}
+	return nil, &NotLoadedError{edge: "userAccessEvent"}
+}
+
 // UserAuthEventOrErr returns the UserAuthEvent value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserAuthEventOrErr() ([]*UserAuthEvent, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.UserAuthEvent, nil
 	}
 	return nil, &NotLoadedError{edge: "userAuthEvent"}
@@ -73,8 +91,10 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldName, user.FieldState:
+		case user.FieldDisplayName, user.FieldState:
 			values[i] = new(sql.NullString)
+		case user.FieldActivatedAt, user.FieldCreatedAt, user.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -95,18 +115,36 @@ func (u *User) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			u.ID = int(value.Int64)
-		case user.FieldName:
+			u.ID = int64(value.Int64)
+		case user.FieldDisplayName:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field name", values[i])
+				return fmt.Errorf("unexpected type %T for field display_name", values[i])
 			} else if value.Valid {
-				u.Name = value.String
+				u.DisplayName = value.String
 			}
 		case user.FieldState:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field state", values[i])
 			} else if value.Valid {
 				u.State = value.String
+			}
+		case user.FieldActivatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field activated_at", values[i])
+			} else if value.Valid {
+				u.ActivatedAt = value.Time
+			}
+		case user.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				u.CreatedAt = value.Time
+			}
+		case user.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				u.UpdatedAt = value.Time
 			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
@@ -129,6 +167,11 @@ func (u *User) QueryUserAuth() *UserAuthQuery {
 // QueryUserMFA queries the "userMFA" edge of the User entity.
 func (u *User) QueryUserMFA() *UserMFAQuery {
 	return NewUserClient(u.config).QueryUserMFA(u)
+}
+
+// QueryUserAccessEvent queries the "userAccessEvent" edge of the User entity.
+func (u *User) QueryUserAccessEvent() *UserAccessEventQuery {
+	return NewUserClient(u.config).QueryUserAccessEvent(u)
 }
 
 // QueryUserAuthEvent queries the "userAuthEvent" edge of the User entity.
@@ -159,11 +202,20 @@ func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
-	builder.WriteString("name=")
-	builder.WriteString(u.Name)
+	builder.WriteString("display_name=")
+	builder.WriteString(u.DisplayName)
 	builder.WriteString(", ")
 	builder.WriteString("state=")
 	builder.WriteString(u.State)
+	builder.WriteString(", ")
+	builder.WriteString("activated_at=")
+	builder.WriteString(u.ActivatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(u.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(u.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/predicate"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauthevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauthevent"
 )
 
 // UserAuthEventQuery is the builder for querying UserAuthEvent entities.
@@ -298,7 +298,7 @@ func (uaeq *UserAuthEventQuery) WithUser(opts ...func(*UserQuery)) *UserAuthEven
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		UserID int64 `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -321,7 +321,7 @@ func (uaeq *UserAuthEventQuery) GroupBy(field string, fields ...string) *UserAut
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		UserID int64 `json:"user_id,omitempty"`
 //	}
 //
 //	client.UserAuthEvent.Query().
@@ -402,8 +402,8 @@ func (uaeq *UserAuthEventQuery) sqlAll(ctx context.Context, hooks ...queryHook) 
 }
 
 func (uaeq *UserAuthEventQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UserAuthEvent, init func(*UserAuthEvent), assign func(*UserAuthEvent, *User)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UserAuthEvent)
+	ids := make([]int64, 0, len(nodes))
+	nodeids := make(map[int64][]*UserAuthEvent)
 	for i := range nodes {
 		fk := nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {

@@ -4,9 +4,9 @@ import (
 	"errors" // Added errors
 	"net/http"
 
-	"github.com/rickcts/srp/internal/models"
-	"github.com/rickcts/srp/internal/repository"
-	"github.com/rickcts/srp/internal/service"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -86,4 +86,54 @@ func (h *SRPAuthHandler) AuthStep2(c *fiber.Ctx) error {
 
 	// Authentication successful! Return M2 and token
 	return c.Status(http.StatusOK).JSON(resp)
+}
+
+func (h *SRPAuthHandler) ChangePassword(c *fiber.Ctx) error {
+	authID, ok := c.Locals("authID").(string)
+	if !ok || authID == "" {
+		return c.Status(http.StatusUnauthorized).JSON(models.ErrorResponse{Error: "User not authenticated"})
+	}
+
+	req := new(models.ChangePasswordRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
+	}
+
+	ctx := c.UserContext()
+	err := h.SRPAuthService.ChangePassword(ctx, authID, *req)
+	if err != nil {
+
+		return c.Status(http.StatusInternalServerError).JSON(models.ErrorResponse{Error: "Failed to change password"})
+	}
+	return c.SendStatus(http.StatusOK)
+}
+
+// InitiatePasswordReset handles requests to start the password reset process.
+func (h *SRPAuthHandler) InitiatePasswordReset(c *fiber.Ctx) error {
+	req := new(models.InitiatePasswordResetRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
+	}
+
+	ctx := c.UserContext()
+	err := h.SRPAuthService.InitiatePasswordReset(ctx, *req)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(models.ErrorResponse{Error: "Password reset initiation failed"})
+	}
+
+	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "If your account exists, a password reset email has been sent."})
+}
+
+// CompletePasswordReset handles requests to complete the password reset process.
+func (h *SRPAuthHandler) CompletePasswordReset(c *fiber.Ctx) error {
+	req := new(models.CompletePasswordResetRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: "Invalid request body"})
+	}
+	ctx := c.UserContext()
+	err := h.SRPAuthService.CompletePasswordReset(ctx, *req)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(models.ErrorResponse{Error: err.Error()})
+	}
+	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Password has been reset successfully."})
 }

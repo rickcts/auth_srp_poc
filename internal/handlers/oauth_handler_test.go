@@ -13,13 +13,13 @@ import (
 
 	"github.com/goccy/go-json"
 
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/mocks"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/router"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/rickcts/srp/internal/config"
-	"github.com/rickcts/srp/internal/handlers"
-	"github.com/rickcts/srp/internal/mocks" // Assuming mocks are in this package
-	"github.com/rickcts/srp/internal/models"
-	"github.com/rickcts/srp/internal/router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

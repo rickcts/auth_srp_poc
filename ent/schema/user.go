@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -14,9 +16,12 @@ type User struct {
 // Fields of the UserAuth.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("display_name").MaxLen(63).Unique(),
+		field.Int64("id").Unique().Immutable(),
+		field.String("display_name").MaxLen(63),
 		field.String("state").MaxLen(15),
-		field.Time("activated_at"),
+		field.Time("activated_at").Optional(),
+		field.Time("created_at").Default(time.Now).Immutable(),
+		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 

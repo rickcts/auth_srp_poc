@@ -8,8 +8,8 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauth"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauth"
 )
 
 // UserAuth is the model entity for the UserAuth schema.
@@ -18,7 +18,7 @@ type UserAuth struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID int `json:"user_id,omitempty"`
+	UserID int64 `json:"user_id,omitempty"`
 	// AuthExtras holds the value of the "auth_extras" field.
 	AuthExtras string `json:"auth_extras,omitempty"`
 	// AuthProvider holds the value of the "auth_provider" field.
@@ -85,7 +85,7 @@ func (ua *UserAuth) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				ua.UserID = int(value.Int64)
+				ua.UserID = value.Int64
 			}
 		case userauth.FieldAuthExtras:
 			if value, ok := values[i].(*sql.NullString); !ok {

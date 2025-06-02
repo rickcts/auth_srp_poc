@@ -8,8 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/predicate"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // UserMFADelete is the builder for deleting a UserMFA entity.

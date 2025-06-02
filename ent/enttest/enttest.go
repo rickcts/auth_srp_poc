@@ -5,12 +5,12 @@ package enttest
 import (
 	"context"
 
-	"github.com/rickcts/srp/ent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent"
 	// required by schema hooks.
-	_ "github.com/rickcts/srp/ent/runtime"
+	_ "github.com/SimpnicServerTeam/scs-aaa-server/ent/runtime"
 
 	"entgo.io/ent/dialect/sql/schema"
-	"github.com/rickcts/srp/ent/migrate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/migrate"
 )
 
 type (

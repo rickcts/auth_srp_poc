@@ -7,14 +7,16 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/rickcts/srp/ent"
-	"github.com/rickcts/srp/internal/config"
-	"github.com/rickcts/srp/internal/handlers"
-	ent_repo "github.com/rickcts/srp/internal/repository/ent"
-	"github.com/rickcts/srp/internal/repository/memory"
-	"github.com/rickcts/srp/internal/router"
-	"github.com/rickcts/srp/internal/server"
-	"github.com/rickcts/srp/internal/service"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
+	ent_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/ent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/memory"
+	redis_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/redis"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/router"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/server"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
+	"github.com/redis/go-redis/v9"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -25,28 +27,44 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	client, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseSettings)
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.RedisSettings.Address,
+		Password: cfg.RedisSettings.Password,
+		DB:       cfg.RedisSettings.DB,
+	})
+	entClient, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseSettings)
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
-	defer client.Close()
+	defer entClient.Close()
 	// Run the auto migration tool.
-	if err := client.Schema.Create(context.Background()); err != nil {
+	if err := entClient.Schema.Create(context.Background()); err != nil {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
 
-	userRepo := ent_repo.NewEntUserRepository(client)
+	sessionRepo := redis_repo.NewRedisSessionRepository(redisClient)
+	userRepo := ent_repo.NewEntUserRepository(entClient)
+	passwordResetCodeRepo := redis_repo.NewRedisPasswordResetTokenRepository(redisClient)
 	stateRepo := memory.NewMemoryStateRepository()
 
 	tokenService := service.NewTokenService(cfg.JWTSecret)
+	emailService := service.NewSMTPEmailService(&cfg.SMTP)
 
 	app := server.New()
 
 	router.SetupSRPRoutes(app, handlers.NewSRPAuthHandler(
-		service.NewSRPAuthService(userRepo, stateRepo, tokenService, cfg),
+		service.NewSRPAuthService(
+			userRepo,
+			stateRepo,
+			sessionRepo,
+			tokenService,
+			passwordResetCodeRepo,
+			emailService,
+			cfg,
+		),
 	))
 	router.SetupOAuthRoutes(app, handlers.NewOAuthHandler(
-		service.NewMSOAuthService(cfg),
+		service.NewMSOAuthService(cfg, userRepo),
 		cfg,
 	))
 

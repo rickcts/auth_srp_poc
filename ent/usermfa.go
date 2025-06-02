@@ -8,8 +8,8 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // UserMFA is the model entity for the UserMFA schema.
@@ -18,9 +18,9 @@ type UserMFA struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID int `json:"user_id,omitempty"`
-	// Method holds the value of the "method" field.
-	Method string `json:"method,omitempty"`
+	UserID int64 `json:"user_id,omitempty"`
+	// SMS, EMAIL, NUM_MATCH, etc.
+	MfaMethod string `json:"mfa_method,omitempty"`
 	// Params holds the value of the "params" field.
 	Params string `json:"params,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -56,7 +56,7 @@ func (*UserMFA) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case usermfa.FieldID, usermfa.FieldUserID:
 			values[i] = new(sql.NullInt64)
-		case usermfa.FieldMethod, usermfa.FieldParams:
+		case usermfa.FieldMfaMethod, usermfa.FieldParams:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -83,13 +83,13 @@ func (um *UserMFA) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				um.UserID = int(value.Int64)
+				um.UserID = value.Int64
 			}
-		case usermfa.FieldMethod:
+		case usermfa.FieldMfaMethod:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field method", values[i])
+				return fmt.Errorf("unexpected type %T for field mfa_method", values[i])
 			} else if value.Valid {
-				um.Method = value.String
+				um.MfaMethod = value.String
 			}
 		case usermfa.FieldParams:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -141,8 +141,8 @@ func (um *UserMFA) String() string {
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", um.UserID))
 	builder.WriteString(", ")
-	builder.WriteString("method=")
-	builder.WriteString(um.Method)
+	builder.WriteString("mfa_method=")
+	builder.WriteString(um.MfaMethod)
 	builder.WriteString(", ")
 	builder.WriteString("params=")
 	builder.WriteString(um.Params)

@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	"github.com/rickcts/srp/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 
 	"github.com/stretchr/testify/mock"
 )

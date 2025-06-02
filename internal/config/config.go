@@ -35,6 +35,29 @@ type SRPConfig struct {
 	AuthStateExpiry  time.Time
 	HashingAlgorithm crypto.Hash
 }
+
+type SessionConfig struct {
+	AccessTokenDuration  time.Duration `mapstructure:"accessTokenDuration"`
+	RefreshTokenDuration time.Duration `mapstructure:"refreshTokenDuration"`
+}
+
+type RedisSettings struct {
+	Address  string
+	Password string
+	DB       int
+}
+
+type SecurityConfig struct {
+	PasswordResetTokenExpiry time.Duration `mapstructure:"PASSWORD_RESET_TOKEN_EXPIRY"` // e.g., "15m"
+}
+
+type SmtpConfig struct {
+	Host     string `mapstructure:"SMTP_HOST"`
+	Port     string `mapstructure:"SMTP_PORT"`
+	User     string `mapstructure:"SMTP_USER"`
+	Password string `mapstructure:"SMTP_PASSWORD"`
+}
+
 type Config struct {
 	// Server port
 	Port           string
@@ -45,10 +68,14 @@ type Config struct {
 	// host=<host> port=<port> user=<user> dbname=<database> password=<pass> sslmode=<enable/disable>
 	DatabaseSettings string
 	StateCookieName  string
+	RedisSettings    RedisSettings
+	SessionConfig    SessionConfig
+	SMTP             SmtpConfig     `mapstructure:",squash"`
+	Security         SecurityConfig `mapstructure:",squash"`
 }
 
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName("config")
+	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
@@ -112,7 +139,7 @@ func LoadConfig() (*Config, error) {
 
 	// OAuth Configuration
 	oauthProviders := make(map[string]*oauth2.Config)
-	oauthProviders["microsoft"] = &oauth2.Config{
+	oauthProviders["MICROSOFT"] = &oauth2.Config{
 		ClientID:     viper.GetString("MICROSOFT_CLIENT_ID"),
 		ClientSecret: viper.GetString("MICROSOFT_CLIENT_SECRET"),
 		RedirectURL:  viper.GetString("MICROSOFT_REDIRECT_URL"),
@@ -132,5 +159,10 @@ func LoadConfig() (*Config, error) {
 		DatabaseSettings: databaseSettings,
 		DatabaseDriver:   databaseDriver,
 		StateCookieName:  viper.GetString("STATE_COOKIE_NAME"),
+		RedisSettings: RedisSettings{
+			Address:  viper.GetString("REDIS_ADDRESS"),
+			Password: viper.GetString("REDIS_PASSWORD"),
+			DB:       viper.GetInt("REDIS_DB"),
+		},
 	}, nil
 }

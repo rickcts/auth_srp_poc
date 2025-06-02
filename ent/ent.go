@@ -12,10 +12,11 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/userauth"
-	"github.com/rickcts/srp/ent/userauthevent"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/useraccessevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauth"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/userauthevent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -76,10 +77,11 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			user.Table:          user.ValidColumn,
-			userauth.Table:      userauth.ValidColumn,
-			userauthevent.Table: userauthevent.ValidColumn,
-			usermfa.Table:       usermfa.ValidColumn,
+			user.Table:            user.ValidColumn,
+			useraccessevent.Table: useraccessevent.ValidColumn,
+			userauth.Table:        userauth.ValidColumn,
+			userauthevent.Table:   userauthevent.ValidColumn,
+			usermfa.Table:         usermfa.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

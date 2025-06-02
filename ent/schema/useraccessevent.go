@@ -14,7 +14,7 @@ type UserAccessEvent struct {
 // Fields of the UserAccessEvent.
 func (UserAccessEvent) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id"),
+		field.Int64("user_id"),
 		field.String("host_from").MaxLen(255).NotEmpty(),
 		field.String("api_method").MaxLen(15).NotEmpty(),
 		field.String("api_path").MaxLen(255).NotEmpty(),

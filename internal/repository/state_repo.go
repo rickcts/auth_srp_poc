@@ -3,7 +3,7 @@ package repository
 import (
 	"fmt" // Added fmt
 
-	"github.com/rickcts/srp/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 )
 
 // StateRepository handles temporary SRP session state

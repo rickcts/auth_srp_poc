@@ -7,7 +7,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/rickcts/srp/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
 )
 
 // ID filters vertices based on their ID field.
@@ -56,7 +56,7 @@ func IDLTE(id int) predicate.UserAuthEvent {
 }
 
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v int) predicate.UserAuthEvent {
+func UserID(v int64) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldEQ(FieldUserID, v))
 }
 
@@ -86,22 +86,22 @@ func ErrorCode(v int) predicate.UserAuthEvent {
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v int) predicate.UserAuthEvent {
+func UserIDEQ(v int64) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldEQ(FieldUserID, v))
 }
 
 // UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v int) predicate.UserAuthEvent {
+func UserIDNEQ(v int64) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldNEQ(FieldUserID, v))
 }
 
 // UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...int) predicate.UserAuthEvent {
+func UserIDIn(vs ...int64) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldIn(FieldUserID, vs...))
 }
 
 // UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...int) predicate.UserAuthEvent {
+func UserIDNotIn(vs ...int64) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldNotIn(FieldUserID, vs...))
 }
 

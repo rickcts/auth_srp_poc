@@ -10,9 +10,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/predicate"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/predicate"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // UserMFAUpdate is the builder for updating UserMFA entities.
@@ -29,29 +29,29 @@ func (umu *UserMFAUpdate) Where(ps ...predicate.UserMFA) *UserMFAUpdate {
 }
 
 // SetUserID sets the "user_id" field.
-func (umu *UserMFAUpdate) SetUserID(i int) *UserMFAUpdate {
+func (umu *UserMFAUpdate) SetUserID(i int64) *UserMFAUpdate {
 	umu.mutation.SetUserID(i)
 	return umu
 }
 
 // SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (umu *UserMFAUpdate) SetNillableUserID(i *int) *UserMFAUpdate {
+func (umu *UserMFAUpdate) SetNillableUserID(i *int64) *UserMFAUpdate {
 	if i != nil {
 		umu.SetUserID(*i)
 	}
 	return umu
 }
 
-// SetMethod sets the "method" field.
-func (umu *UserMFAUpdate) SetMethod(s string) *UserMFAUpdate {
-	umu.mutation.SetMethod(s)
+// SetMfaMethod sets the "mfa_method" field.
+func (umu *UserMFAUpdate) SetMfaMethod(s string) *UserMFAUpdate {
+	umu.mutation.SetMfaMethod(s)
 	return umu
 }
 
-// SetNillableMethod sets the "method" field if the given value is not nil.
-func (umu *UserMFAUpdate) SetNillableMethod(s *string) *UserMFAUpdate {
+// SetNillableMfaMethod sets the "mfa_method" field if the given value is not nil.
+func (umu *UserMFAUpdate) SetNillableMfaMethod(s *string) *UserMFAUpdate {
 	if s != nil {
-		umu.SetMethod(*s)
+		umu.SetMfaMethod(*s)
 	}
 	return umu
 }
@@ -139,8 +139,8 @@ func (umu *UserMFAUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := umu.mutation.Method(); ok {
-		_spec.SetField(usermfa.FieldMethod, field.TypeString, value)
+	if value, ok := umu.mutation.MfaMethod(); ok {
+		_spec.SetField(usermfa.FieldMfaMethod, field.TypeString, value)
 	}
 	if value, ok := umu.mutation.Params(); ok {
 		_spec.SetField(usermfa.FieldParams, field.TypeString, value)
@@ -156,7 +156,7 @@ func (umu *UserMFAUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{usermfa.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -169,7 +169,7 @@ func (umu *UserMFAUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{usermfa.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -198,29 +198,29 @@ type UserMFAUpdateOne struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (umuo *UserMFAUpdateOne) SetUserID(i int) *UserMFAUpdateOne {
+func (umuo *UserMFAUpdateOne) SetUserID(i int64) *UserMFAUpdateOne {
 	umuo.mutation.SetUserID(i)
 	return umuo
 }
 
 // SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (umuo *UserMFAUpdateOne) SetNillableUserID(i *int) *UserMFAUpdateOne {
+func (umuo *UserMFAUpdateOne) SetNillableUserID(i *int64) *UserMFAUpdateOne {
 	if i != nil {
 		umuo.SetUserID(*i)
 	}
 	return umuo
 }
 
-// SetMethod sets the "method" field.
-func (umuo *UserMFAUpdateOne) SetMethod(s string) *UserMFAUpdateOne {
-	umuo.mutation.SetMethod(s)
+// SetMfaMethod sets the "mfa_method" field.
+func (umuo *UserMFAUpdateOne) SetMfaMethod(s string) *UserMFAUpdateOne {
+	umuo.mutation.SetMfaMethod(s)
 	return umuo
 }
 
-// SetNillableMethod sets the "method" field if the given value is not nil.
-func (umuo *UserMFAUpdateOne) SetNillableMethod(s *string) *UserMFAUpdateOne {
+// SetNillableMfaMethod sets the "mfa_method" field if the given value is not nil.
+func (umuo *UserMFAUpdateOne) SetNillableMfaMethod(s *string) *UserMFAUpdateOne {
 	if s != nil {
-		umuo.SetMethod(*s)
+		umuo.SetMfaMethod(*s)
 	}
 	return umuo
 }
@@ -338,8 +338,8 @@ func (umuo *UserMFAUpdateOne) sqlSave(ctx context.Context) (_node *UserMFA, err 
 			}
 		}
 	}
-	if value, ok := umuo.mutation.Method(); ok {
-		_spec.SetField(usermfa.FieldMethod, field.TypeString, value)
+	if value, ok := umuo.mutation.MfaMethod(); ok {
+		_spec.SetField(usermfa.FieldMfaMethod, field.TypeString, value)
 	}
 	if value, ok := umuo.mutation.Params(); ok {
 		_spec.SetField(usermfa.FieldParams, field.TypeString, value)
@@ -355,7 +355,7 @@ func (umuo *UserMFAUpdateOne) sqlSave(ctx context.Context) (_node *UserMFA, err 
 			Columns: []string{usermfa.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -368,7 +368,7 @@ func (umuo *UserMFAUpdateOne) sqlSave(ctx context.Context) (_node *UserMFA, err 
 			Columns: []string{usermfa.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

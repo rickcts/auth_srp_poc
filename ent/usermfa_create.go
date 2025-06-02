@@ -9,8 +9,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/rickcts/srp/ent/user"
-	"github.com/rickcts/srp/ent/usermfa"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
+	"github.com/SimpnicServerTeam/scs-aaa-server/ent/usermfa"
 )
 
 // UserMFACreate is the builder for creating a UserMFA entity.
@@ -21,14 +21,14 @@ type UserMFACreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (umc *UserMFACreate) SetUserID(i int) *UserMFACreate {
+func (umc *UserMFACreate) SetUserID(i int64) *UserMFACreate {
 	umc.mutation.SetUserID(i)
 	return umc
 }
 
-// SetMethod sets the "method" field.
-func (umc *UserMFACreate) SetMethod(s string) *UserMFACreate {
-	umc.mutation.SetMethod(s)
+// SetMfaMethod sets the "mfa_method" field.
+func (umc *UserMFACreate) SetMfaMethod(s string) *UserMFACreate {
+	umc.mutation.SetMfaMethod(s)
 	return umc
 }
 
@@ -88,8 +88,8 @@ func (umc *UserMFACreate) check() error {
 	if _, ok := umc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserMFA.user_id"`)}
 	}
-	if _, ok := umc.mutation.Method(); !ok {
-		return &ValidationError{Name: "method", err: errors.New(`ent: missing required field "UserMFA.method"`)}
+	if _, ok := umc.mutation.MfaMethod(); !ok {
+		return &ValidationError{Name: "mfa_method", err: errors.New(`ent: missing required field "UserMFA.mfa_method"`)}
 	}
 	if len(umc.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserMFA.user"`)}
@@ -120,9 +120,9 @@ func (umc *UserMFACreate) createSpec() (*UserMFA, *sqlgraph.CreateSpec) {
 		_node = &UserMFA{config: umc.config}
 		_spec = sqlgraph.NewCreateSpec(usermfa.Table, sqlgraph.NewFieldSpec(usermfa.FieldID, field.TypeInt))
 	)
-	if value, ok := umc.mutation.Method(); ok {
-		_spec.SetField(usermfa.FieldMethod, field.TypeString, value)
-		_node.Method = value
+	if value, ok := umc.mutation.MfaMethod(); ok {
+		_spec.SetField(usermfa.FieldMfaMethod, field.TypeString, value)
+		_node.MfaMethod = value
 	}
 	if value, ok := umc.mutation.Params(); ok {
 		_spec.SetField(usermfa.FieldParams, field.TypeString, value)
@@ -136,7 +136,7 @@ func (umc *UserMFACreate) createSpec() (*UserMFA, *sqlgraph.CreateSpec) {
 			Columns: []string{usermfa.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

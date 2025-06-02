@@ -1,14 +1,16 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/rickcts/srp/internal/config"
-	"github.com/rickcts/srp/internal/service"
 )
 
 // OAuthHandler handles authentication-related HTTP requests
@@ -27,9 +29,8 @@ func NewOAuthHandler(oauthService service.OAuthProvider, cfg *config.Config) *OA
 
 // Login initiates the OAuth2 flow by redirecting the user to Microsoft
 func (h *OAuthHandler) Login(c *fiber.Ctx) error {
-	state := uuid.NewString() // Generate random state for CSRF protection
+	state := uuid.NewString()
 
-	// Store state in a short-lived, secure cookie
 	c.Cookie(&fiber.Cookie{
 		Name:     h.Config.StateCookieName,
 		Value:    state,
@@ -42,11 +43,10 @@ func (h *OAuthHandler) Login(c *fiber.Ctx) error {
 	authURL := h.OAuthService.GetAuthCodeURL(state)
 	log.Printf("Redirecting user to: %s\n", authURL)
 
-	// Use Temporary Redirect (307)
 	return c.Redirect(authURL, http.StatusTemporaryRedirect)
 }
 
-// Callback handles the redirect back from Microsoft after authentication
+// Callback handles the web redirect back from Microsoft after authentication
 func (h *OAuthHandler) Callback(c *fiber.Ctx) error {
 	// --- State Verification (CSRF Protection) ---
 	queryState := c.Query("state")
@@ -93,7 +93,7 @@ func (h *OAuthHandler) Callback(c *fiber.Ctx) error {
 	log.Println("Token exchange successful")
 
 	// --- Fetch User Info ---
-	user, err := h.OAuthService.GetUserInfo(c.Context(), token) // Use request context
+	user, err := h.OAuthService.ProcessUserInfo(c.Context(), token, "MICROSOFT") // Use request context
 	if err != nil {
 		log.Printf("Error fetching user info in callback: %v\n", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user information")
@@ -106,4 +106,103 @@ func (h *OAuthHandler) Callback(c *fiber.Ctx) error {
 		"user":    user,
 		// "access_token": token.AccessToken,
 	})
+}
+
+// MobileLogin handles the token exchange initiated by a mobile application.
+func (h *OAuthHandler) MobileLogin(c *fiber.Ctx) error {
+	var req models.MobileLoginRequest
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("MobileLogin error: Failed to parse request body: %v\n", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if req.Code == "" || req.CodeVerifier == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Missing code or code_verifier",
+		})
+	}
+	log.Printf("MobileLogin: Received code and verifier.")
+
+	oauth2token, err := h.OAuthService.ExchangeCodeMobile(c.Context(), req.Code, req.CodeVerifier, req.AuthProvider)
+	if err != nil {
+		log.Printf("MobileLogin error: Failed to exchange code: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to authenticate with provider",
+		})
+	}
+	log.Println("MobileLogin: Token exchange successful.")
+
+	user, err := h.OAuthService.ProcessUserInfo(c.Context(), oauth2token, req.AuthProvider)
+	// user, err := h.OAuthService.ProcessUserInfo(c.Context(), oauth2token, req.AuthProvider)
+	if err != nil {
+		log.Printf("MobileLogin error: Failed to fetch user info: %v\n", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch user information",
+		})
+	}
+	log.Printf("MobileLogin: Successfully logged in user: %s (%s)\n", user.DisplayName, user.Email)
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"message": "Login successful!",
+		"user":    user,
+	})
+}
+
+func (h *OAuthHandler) GetUserInfoHandler(c *fiber.Ctx) error {
+	accessToken, ok := c.Locals("accessToken").(string)
+	if !ok || accessToken == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Access token not found in context",
+		})
+	}
+
+	req, err := http.NewRequest("GET", "https://graph.microsoft.com/oidc/userinfo", nil)
+	if err != nil {
+		log.Printf("Error creating UserInfo request: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Could not create request to userinfo endpoint",
+		})
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error calling UserInfo endpoint: %v", err)
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"error": "Failed to call userinfo endpoint",
+		})
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errorBody map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&errorBody); err == nil {
+			log.Printf("UserInfo endpoint returned status %d: %v", resp.StatusCode, errorBody)
+			return c.Status(resp.StatusCode).JSON(fiber.Map{
+				"error":            "Error from userinfo endpoint",
+				"status_code":      resp.StatusCode,
+				"ms_error_details": errorBody,
+			})
+		}
+		log.Printf("UserInfo endpoint returned status %d", resp.StatusCode)
+		return c.Status(resp.StatusCode).JSON(fiber.Map{
+			"error":       "Error from userinfo endpoint",
+			"status_code": resp.StatusCode,
+		})
+	}
+
+	var userInfo map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
+		log.Printf("Error decoding UserInfo response: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Could not decode userinfo response",
+		})
+	}
+
+	return c.JSON(userInfo)
 }

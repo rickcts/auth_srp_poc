@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserAccessEvent is the client for interacting with the UserAccessEvent builders.
+	UserAccessEvent *UserAccessEventClient
 	// UserAuth is the client for interacting with the UserAuth builders.
 	UserAuth *UserAuthClient
 	// UserAuthEvent is the client for interacting with the UserAuthEvent builders.
@@ -152,6 +154,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.User = NewUserClient(tx.config)
+	tx.UserAccessEvent = NewUserAccessEventClient(tx.config)
 	tx.UserAuth = NewUserAuthClient(tx.config)
 	tx.UserAuthEvent = NewUserAuthEventClient(tx.config)
 	tx.UserMFA = NewUserMFAClient(tx.config)

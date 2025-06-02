@@ -14,7 +14,7 @@ type UserAuth struct {
 // Fields of the UserAuth.
 func (UserAuth) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id"),
+		field.Int64("user_id"),
 		field.Text("auth_extras"),
 		field.String("auth_provider"),
 		field.String("auth_id"),

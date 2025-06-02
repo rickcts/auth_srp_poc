@@ -14,8 +14,8 @@ const (
 	FieldID = "id"
 	// FieldUserID holds the string denoting the user_id field in the database.
 	FieldUserID = "user_id"
-	// FieldMethod holds the string denoting the method field in the database.
-	FieldMethod = "method"
+	// FieldMfaMethod holds the string denoting the mfa_method field in the database.
+	FieldMfaMethod = "mfa_method"
 	// FieldParams holds the string denoting the params field in the database.
 	FieldParams = "params"
 	// EdgeUser holds the string denoting the user edge name in mutations.
@@ -35,7 +35,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldUserID,
-	FieldMethod,
+	FieldMfaMethod,
 	FieldParams,
 }
 
@@ -62,9 +62,9 @@ func ByUserID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUserID, opts...).ToFunc()
 }
 
-// ByMethod orders the results by the method field.
-func ByMethod(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldMethod, opts...).ToFunc()
+// ByMfaMethod orders the results by the mfa_method field.
+func ByMfaMethod(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMfaMethod, opts...).ToFunc()
 }
 
 // ByParams orders the results by the params field.

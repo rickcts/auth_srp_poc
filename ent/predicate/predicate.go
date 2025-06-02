@@ -9,6 +9,9 @@ import (
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
 
+// UserAccessEvent is the predicate function for useraccessevent builders.
+type UserAccessEvent func(*sql.Selector)
+
 // UserAuth is the predicate function for userauth builders.
 type UserAuth func(*sql.Selector)
 

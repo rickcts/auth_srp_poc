@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rickcts/srp/internal/models"
-	"github.com/rickcts/srp/internal/repository"
-	"github.com/rickcts/srp/internal/repository/memory"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/memory"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,10 +18,10 @@ func TestMemoryStateRepository(t *testing.T) {
 
 	authID := "testuser"
 	state := models.AuthSessionState{
-		Username: authID,
-		Salt:     []byte("somesalt"),
-		B:        []byte("someB"),
-		Expiry:   time.Now().Add(5 * time.Minute),
+		AuthID: authID,
+		Salt:   []byte("somesalt"),
+		B:      []byte("someB"),
+		Expiry: time.Now().Add(5 * time.Minute),
 	}
 
 	t.Run("StoreAndGetState", func(t *testing.T) {
@@ -31,10 +31,9 @@ func TestMemoryStateRepository(t *testing.T) {
 		retState, err := repo.GetAuthState(authID)
 		require.NoError(t, err)
 		require.NotNil(t, retState)
-		assert.Equal(t, state.Username, retState.Username)
+		assert.Equal(t, state.AuthID, retState.AuthID)
 		assert.Equal(t, state.Salt, retState.Salt)
 		assert.Equal(t, state.B, retState.B)
-		// Don't compare Expiry directly due to potential minor time differences
 		assert.False(t, retState.Expiry.IsZero())
 	})
 
@@ -47,8 +46,8 @@ func TestMemoryStateRepository(t *testing.T) {
 	t.Run("GetStateExpired", func(t *testing.T) {
 		expiredAuthID := "expireduser"
 		expiredState := models.AuthSessionState{
-			Username: expiredAuthID,
-			Expiry:   time.Now().Add(-1 * time.Minute), // Expired
+			AuthID: expiredAuthID,
+			Expiry: time.Now().Add(-1 * time.Minute), // Expired
 		}
 		err := repo.StoreAuthState(expiredAuthID, expiredState)
 		require.NoError(t, err)
@@ -64,8 +63,8 @@ func TestMemoryStateRepository(t *testing.T) {
 	t.Run("DeleteState", func(t *testing.T) {
 		deleteAuthID := "deleteuser"
 		deleteState := models.AuthSessionState{
-			Username: deleteAuthID,
-			Expiry:   time.Now().Add(5 * time.Minute),
+			AuthID: deleteAuthID,
+			Expiry: time.Now().Add(5 * time.Minute),
 		}
 		err := repo.StoreAuthState(deleteAuthID, deleteState)
 		require.NoError(t, err)

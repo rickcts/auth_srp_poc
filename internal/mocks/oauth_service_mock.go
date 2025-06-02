@@ -3,7 +3,8 @@ package mocks
 import (
 	"context"
 
-	"github.com/rickcts/srp/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/oauth2"
 )
@@ -29,9 +30,20 @@ func (m *MockOAuthService) ExchangeCode(ctx context.Context, code string) (*oaut
 }
 
 // GetUserInfo provides a mock function for fetching user info using a token.
-func (m *MockOAuthService) GetUserInfo(ctx context.Context, token *oauth2.Token) (*models.OAuthUser, error) {
+func (m *MockOAuthService) ProcessUserInfo(ctx context.Context, token *oauth2.Token, tokenProvider string) (*models.OAuthUser, error) {
 	args := m.Called(ctx, token)
 	// Handle potential nil return for the user
 	user, _ := args.Get(0).(*models.OAuthUser)
 	return user, args.Error(1)
+}
+
+func (m *MockOAuthService) VerifyToken(ctx context.Context, oauth2Token *oauth2.Token, tokenProvider string) (*oidc.IDToken, error) {
+	args := m.Called(ctx, oauth2Token, tokenProvider)
+
+	return args.Get(0).(*oidc.IDToken), args.Error(1)
+}
+func (m *MockOAuthService) ExchangeCodeMobile(ctx context.Context, code, codeVerifier, tokenProvider string) (*oauth2.Token, error) {
+	args := m.Called(ctx, code, codeVerifier, tokenProvider)
+
+	return args.Get(0).(*oauth2.Token), args.Error(1)
 }

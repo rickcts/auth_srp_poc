@@ -3,6 +3,8 @@
 package user
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -12,14 +14,22 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldName holds the string denoting the name field in the database.
-	FieldName = "name"
+	// FieldDisplayName holds the string denoting the display_name field in the database.
+	FieldDisplayName = "display_name"
 	// FieldState holds the string denoting the state field in the database.
 	FieldState = "state"
+	// FieldActivatedAt holds the string denoting the activated_at field in the database.
+	FieldActivatedAt = "activated_at"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
 	// EdgeUserAuth holds the string denoting the userauth edge name in mutations.
 	EdgeUserAuth = "userAuth"
 	// EdgeUserMFA holds the string denoting the usermfa edge name in mutations.
 	EdgeUserMFA = "userMFA"
+	// EdgeUserAccessEvent holds the string denoting the useraccessevent edge name in mutations.
+	EdgeUserAccessEvent = "userAccessEvent"
 	// EdgeUserAuthEvent holds the string denoting the userauthevent edge name in mutations.
 	EdgeUserAuthEvent = "userAuthEvent"
 	// Table holds the table name of the user in the database.
@@ -38,6 +48,13 @@ const (
 	UserMFAInverseTable = "user_mf_as"
 	// UserMFAColumn is the table column denoting the userMFA relation/edge.
 	UserMFAColumn = "user_id"
+	// UserAccessEventTable is the table that holds the userAccessEvent relation/edge.
+	UserAccessEventTable = "user_access_events"
+	// UserAccessEventInverseTable is the table name for the UserAccessEvent entity.
+	// It exists in this package in order to avoid circular dependency with the "useraccessevent" package.
+	UserAccessEventInverseTable = "user_access_events"
+	// UserAccessEventColumn is the table column denoting the userAccessEvent relation/edge.
+	UserAccessEventColumn = "user_id"
 	// UserAuthEventTable is the table that holds the userAuthEvent relation/edge.
 	UserAuthEventTable = "user_auth_events"
 	// UserAuthEventInverseTable is the table name for the UserAuthEvent entity.
@@ -50,8 +67,11 @@ const (
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
-	FieldName,
+	FieldDisplayName,
 	FieldState,
+	FieldActivatedAt,
+	FieldCreatedAt,
+	FieldUpdatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -64,6 +84,19 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+var (
+	// DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
+	DisplayNameValidator func(string) error
+	// StateValidator is a validator for the "state" field. It is called by the builders before save.
+	StateValidator func(string) error
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
+)
+
 // OrderOption defines the ordering options for the User queries.
 type OrderOption func(*sql.Selector)
 
@@ -72,14 +105,29 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByName orders the results by the name field.
-func ByName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldName, opts...).ToFunc()
+// ByDisplayName orders the results by the display_name field.
+func ByDisplayName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDisplayName, opts...).ToFunc()
 }
 
 // ByState orders the results by the state field.
 func ByState(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldState, opts...).ToFunc()
+}
+
+// ByActivatedAt orders the results by the activated_at field.
+func ByActivatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActivatedAt, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
 // ByUserAuthCount orders the results by userAuth count.
@@ -110,6 +158,20 @@ func ByUserMFA(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByUserAccessEventCount orders the results by userAccessEvent count.
+func ByUserAccessEventCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newUserAccessEventStep(), opts...)
+	}
+}
+
+// ByUserAccessEvent orders the results by userAccessEvent terms.
+func ByUserAccessEvent(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newUserAccessEventStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUserAuthEventCount orders the results by userAuthEvent count.
 func ByUserAuthEventCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -135,6 +197,13 @@ func newUserMFAStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UserMFAInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UserMFATable, UserMFAColumn),
+	)
+}
+func newUserAccessEventStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(UserAccessEventInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, UserAccessEventTable, UserAccessEventColumn),
 	)
 }
 func newUserAuthEventStep() *sqlgraph.Step {
