@@ -30,7 +30,6 @@ type SRPAuthService struct {
 
 type JWTGenerator interface {
 	GenerateToken(userId int64) (token string, expiry time.Time, err error)
-	ValidateToken(tokenString string) (userId int64, claims map[string]interface{}, err error)
 }
 
 type SessionGenerator interface {
@@ -41,6 +40,8 @@ type SessionGenerator interface {
 }
 
 type SRPAuthGenerator interface {
+	// CheckIfUserExists checks if the user email is already in the database
+	CheckIfUserExists(ctx context.Context, req models.AuthIDRequest) (bool, error)
 	// Register handles user registration
 	Register(ctx context.Context, req models.SRPRegisterRequest) error
 	// ComputeB handles SRP step 1 (Server -> Client: salt, B)

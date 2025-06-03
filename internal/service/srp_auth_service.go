@@ -50,6 +50,14 @@ func generateSixDigitCode() (string, error) {
 	return fmt.Sprintf("%06d", n.Int64()), nil // Pad with leading zeros if necessary
 }
 
+func (s *SRPAuthService) CheckIfUserExists(ctx context.Context, req models.AuthIDRequest) (bool, error) {
+	if req.AuthID == "" {
+		return false, fmt.Errorf("authID cannot be empty")
+	}
+
+	return s.userRepo.CheckIfUserExists(ctx, req.AuthID)
+}
+
 // Register handles user registration
 func (s *SRPAuthService) Register(ctx context.Context, req models.SRPRegisterRequest) error {
 	if req.AuthID == "" || req.Salt == "" || req.Verifier == "" {

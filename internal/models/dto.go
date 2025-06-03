@@ -14,8 +14,8 @@ type SRPRegisterRequest struct {
 	Verifier    string `json:"verifier"` // Hex encoded verifier 'v'
 }
 
-// SaltRequest is the input for the first step of SRP auth
-type SaltRequest struct {
+// AuthIDRequest is the input for the first step of SRP auth
+type AuthIDRequest struct {
 	AuthID string `json:"authId"`
 }
 

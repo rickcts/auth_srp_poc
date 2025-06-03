@@ -21,6 +21,23 @@ func NewSRPAuthHandler(authService service.SRPAuthGenerator) *SRPAuthHandler {
 	return &SRPAuthHandler{SRPAuthService: authService}
 }
 
+// CheckEmailExists checks if the user email is already in the database
+func (h *SRPAuthHandler) CheckEmailExists(c echo.Context) error {
+	req := new(models.AuthIDRequest)
+	if err := c.Bind(req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	ctx := c.Request().Context()
+
+	isUserExists, err := h.SRPAuthService.CheckIfUserExists(ctx, *req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Registration failed")
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"exists": isUserExists})
+}
+
 // Register handles user registration requests
 func (h *SRPAuthHandler) Register(c echo.Context) error {
 	req := new(models.SRPRegisterRequest)
@@ -77,10 +94,9 @@ func (h *SRPAuthHandler) AuthStep2(c echo.Context) error {
 		if errors.Is(err, repository.ErrStateNotFound) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Authentication session expired or invalid")
 		}
-		if err.Error() == "client proof M1 verification failed" { // Check specific error string from service
+		if err.Error() == "client proof M1 verification failed" {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid client credentials")
 		}
-		// Log internal error details
 		return echo.NewHTTPError(http.StatusInternalServerError, "Authentication verification failed")
 	}
 

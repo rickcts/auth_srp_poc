@@ -6,6 +6,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/goccy/go-json v0.10.5
 	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/labstack/echo-jwt/v4 v4.3.1
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/redis/go-redis/v9 v9.9.0

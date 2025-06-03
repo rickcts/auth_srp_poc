@@ -72,7 +72,6 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	go func() {
 		log.Printf("Server starting on port %s...", cfg.Port)
 		if err := app.Start(":" + cfg.Port); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -88,4 +87,5 @@ func main() {
 	}
 
 	log.Println("Server stopped gracefully.")
+
 }

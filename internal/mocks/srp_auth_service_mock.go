@@ -12,6 +12,11 @@ type MockSRPAuthService struct {
 	mock.Mock
 }
 
+func (m *MockSRPAuthService) CheckIfUserExists(ctx context.Context, req models.AuthIDRequest) (bool, error) {
+	args := m.Called(req)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockSRPAuthService) Register(ctx context.Context, req models.SRPRegisterRequest) error {
 	args := m.Called(req)
 	return args.Error(0)
