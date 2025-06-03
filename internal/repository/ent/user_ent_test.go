@@ -10,6 +10,7 @@ import (
 	ent_userauth "github.com/SimpnicServerTeam/scs-aaa-server/ent/userauth"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	ent_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/ent"
+	"github.com/goccy/go-json"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
@@ -159,4 +160,72 @@ func TestEntUserRepository(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal user extras")
 	})
+}
+
+func TestEntUserRepository_UpdateUserSRPAuth(t *testing.T) {
+	authID := "srpuser@example.com"
+	displayName := "SRP User"
+	authProvider := "SRP6"
+	initialSalt := "initialSaltHex"
+	initialVerifier := "initialVerifierHex"
+	initialExtras := map[string]string{
+		"salt":     initialSalt,
+		"verifier": initialVerifier,
+		"otherKey": "otherValue", // To ensure other keys are preserved
+	}
+
+	newSalt := "newSaltHex"
+	newVerifier := "newVerifierHex"
+
+	t.Run("Success", func(t *testing.T) {
+		ctx, client, repo := newTestRepo(t)
+
+		// 1. Create the user first
+		err := repo.CreateUser(ctx, authID, displayName, authProvider, initialExtras)
+		require.NoError(t, err)
+
+		// 2. Update SRP Auth
+		err = repo.UpdateUserSRPAuth(ctx, authID, newSalt, newVerifier)
+		require.NoError(t, err)
+
+		// 3. Verify the update
+		updatedUA, err := client.UserAuth.Query().Where(ent_userauth.AuthIDEQ(authID)).Only(ctx)
+		require.NoError(t, err)
+
+		var updatedExtras map[string]string
+		err = json.Unmarshal([]byte(updatedUA.AuthExtras), &updatedExtras)
+		require.NoError(t, err)
+
+		assert.Equal(t, newSalt, updatedExtras["salt"])
+		assert.Equal(t, newVerifier, updatedExtras["verifier"])
+		assert.Equal(t, initialExtras["otherKey"], updatedExtras["otherKey"], "Other keys in auth_extras should be preserved")
+	})
+
+	t.Run("UserNotFound", func(t *testing.T) {
+		ctx, _, repo := newTestRepo(t)
+
+		err := repo.UpdateUserSRPAuth(ctx, "nonexistent@example.com", newSalt, newVerifier)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, repository.ErrUserNotFound)
+	})
+
+	t.Run("OldAuthExtrasUnmarshallingError", func(t *testing.T) {
+		ctx, client, repo := newTestRepo(t)
+
+		// 1. Create the user (UserAuth will be created by CreateUser)
+		err := repo.CreateUser(ctx, authID, displayName, authProvider, initialExtras)
+		require.NoError(t, err)
+
+		// 2. Manually corrupt AuthExtras in UserAuth to be invalid JSON
+		ua, err := client.UserAuth.Query().Where(ent_userauth.AuthIDEQ(authID)).Only(ctx)
+		require.NoError(t, err)
+		_, err = client.UserAuth.UpdateOne(ua).SetAuthExtras("this-is-not-json").Save(ctx)
+		require.NoError(t, err)
+
+		// 3. Attempt to update SRP Auth
+		err = repo.UpdateUserSRPAuth(ctx, authID, newSalt, newVerifier)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unmarshal old user extras")
+	})
+
 }

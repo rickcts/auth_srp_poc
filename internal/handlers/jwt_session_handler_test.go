@@ -12,6 +12,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/mocks"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -118,6 +119,49 @@ func TestJWTAuthHandler_VerifyToken(t *testing.T) {
 		var errResp echo.HTTPError
 		_ = json.Unmarshal(rec.Body.Bytes(), &errResp)
 		assert.Equal(t, "Invalid session token", errResp.Message) // This specific message is from the handler
+		deps.mockSessionService.AssertExpectations(t)
+	})
+}
+
+func TestJWTAuthHandler_VerifyToken_AfterLogout(t *testing.T) {
+	tokenToInvalidate := "session-to-be-logged-out-then-verified"
+
+	t.Run("VerifyFailsAfterLogout", func(t *testing.T) {
+		deps := setupJWTAuthHandlerTest(t)
+
+		// 1. Initial state: token is valid
+		deps.mockSessionService.On("VerifySessionToken", mock.Anything, tokenToInvalidate).
+			Return(&models.VerifyTokenResponse{IsValid: true, UserID: 1, SessionID: tokenToInvalidate}, nil).Once()
+
+		// Perform initial verification
+		recVerify1 := performJWTRequest(deps.echo, http.MethodPost, "/verify", tokenToInvalidate, nil)
+		assert.Equal(t, http.StatusOK, recVerify1.Code, "Token should be valid initially")
+
+		// 2. Mock for Logout
+		deps.mockSessionService.On("SignOut", mock.Anything, tokenToInvalidate).Return(nil).Once()
+
+		// Perform Logout
+		// The test setup uses GET for /logout
+		recLogout := performJWTRequest(deps.echo, http.MethodGet, "/logout", tokenToInvalidate, nil)
+		assert.Equal(t, http.StatusOK, recLogout.Code, "Logout should succeed")
+
+		// 3. After logout, token should be invalid.
+		// Mock SessionService.VerifySessionToken to reflect that the session is gone.
+		// Returning repository.ErrSessionNotFound is a realistic way the service would indicate this.
+		deps.mockSessionService.On("VerifySessionToken", mock.Anything, tokenToInvalidate).
+			Return(nil, repository.ErrSessionNotFound). // Simulate session not found after logout
+			Once()
+
+		// Perform verification again
+		recVerify2 := performJWTRequest(deps.echo, http.MethodPost, "/verify", tokenToInvalidate, nil)
+		assert.Equal(t, http.StatusUnauthorized, recVerify2.Code, "Token should be invalid after logout")
+
+		var errResp echo.HTTPError
+		err := json.Unmarshal(recVerify2.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		// This message comes from the handler when VerifySessionToken returns an error.
+		assert.Equal(t, "Invalid or expired session token", errResp.Message)
+
 		deps.mockSessionService.AssertExpectations(t)
 	})
 }

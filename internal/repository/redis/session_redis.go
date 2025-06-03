@@ -36,7 +36,7 @@ func NewRedisSessionRepository(client *redis.Client) repository.SessionRepositor
 // StoreSession saves the session data and adds it to the user's session index.
 func (r *RedisSessionRepository) StoreSession(ctx context.Context, session *models.Session) error {
 	if session == nil || session.SessionID == "" || session.UserID <= 0 {
-		return errors.New("invalID session data: SessionID and userID must be set")
+		return errors.New("invalid session data: SessionID and userID must be set")
 	}
 
 	jsonData, err := json.Marshal(session)
@@ -90,7 +90,7 @@ func (r *RedisSessionRepository) GetSession(ctx context.Context, SessionID strin
 	if session.IsExpired() {
 		pipe := r.client.Pipeline()
 		pipe.Del(ctx, sessionKey)
-		if session.UserID <= 0 { // Only try to remove from set if userID is present
+		if session.UserID > 0 { // Only try to remove from set if userID is valid and was indexed
 			pipe.SRem(ctx, makeUserSessionsKey(session.UserID), SessionID)
 		}
 		_, _ = pipe.Exec(ctx)
@@ -121,7 +121,7 @@ func (r *RedisSessionRepository) DeleteSession(ctx context.Context, SessionID st
 
 	pipe := r.client.TxPipeline()
 	pipe.Del(ctx, sessionKey)
-	if session.UserID <= 0 {
+	if session.UserID > 0 { // Only try to remove from set if userID is valid and was indexed
 		userKey := makeUserSessionsKey(session.UserID)
 		pipe.SRem(ctx, userKey, SessionID)
 	}
