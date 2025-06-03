@@ -56,11 +56,6 @@ type AuthSessionState struct {
 	Expiry time.Time
 }
 
-// ErrorResponse standard error format
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 type MobileLoginRequest struct {
 	Code         string `json:"code"`
 	CodeVerifier string `json:"codeVerifier"`

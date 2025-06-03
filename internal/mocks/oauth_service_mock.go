@@ -31,7 +31,7 @@ func (m *MockOAuthService) ExchangeCode(ctx context.Context, code string) (*oaut
 
 // GetUserInfo provides a mock function for fetching user info using a token.
 func (m *MockOAuthService) ProcessUserInfo(ctx context.Context, token *oauth2.Token, tokenProvider string) (*models.OAuthUser, error) {
-	args := m.Called(ctx, token)
+	args := m.Called(ctx, token, tokenProvider)
 	// Handle potential nil return for the user
 	user, _ := args.Get(0).(*models.OAuthUser)
 	return user, args.Error(1)

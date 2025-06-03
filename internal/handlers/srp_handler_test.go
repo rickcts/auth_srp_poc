@@ -17,35 +17,34 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/router"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestApp(mockAuthService *mocks.MockSRPAuthService) *fiber.App {
-	app := fiber.New()
+func setupTestApp(mockAuthService *mocks.MockSRPAuthService) *echo.Echo {
+	app := echo.New()
 	authHandler := handlers.NewSRPAuthHandler(mockAuthService)
 	router.SetupSRPRoutes(app, authHandler)
 	return app
 }
 
-func performRequest(app *fiber.App, method, path string, body any) *http.Response {
+func performRequest(e *echo.Echo, method, path string, body any) *http.Response {
 	var reqBody io.Reader = nil
 	if body != nil {
 		jsonData, _ := json.Marshal(body)
 		reqBody = bytes.NewBuffer(jsonData)
 	}
-
 	req := httptest.NewRequest(method, path, reqBody)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, _ := app.Test(req, -1) // -1 disables timeout
-	return resp
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec.Result()
 }
 
 func TestAuthHandler_Register(t *testing.T) {
-	// Common request data can stay outsIDe
 	registerReq := models.SRPRegisterRequest{
 		AuthID:      "auth1@example.com",
 		DisplayName: "newuser",
@@ -73,10 +72,16 @@ func TestAuthHandler_Register(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/api/auth/srp/sign-up", bytes.NewBufferString("{invalID json"))
 		req.Header.Set("Content-Type", "application/json")
-		resp, _ := app.Test(req, -1)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		// No mock call expected for bad parsing
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Invalid request body", errResp.Message)
 		mockAuthService.AssertNotCalled(t, "Register", mock.Anything)
 		// Assert expectations to catch any unexpected calls
 		mockAuthService.AssertExpectations(t)
@@ -92,12 +97,12 @@ func TestAuthHandler_Register(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/sign-up", registerReq)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "Username already exists", errResp.Error)
+		assert.Equal(t, "Username already exists", errResp.Message)
 
 		mockAuthService.AssertExpectations(t)
 	})
@@ -111,12 +116,12 @@ func TestAuthHandler_Register(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/sign-up", registerReq)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "Registration failed", errResp.Error)
+		assert.Equal(t, "Registration failed", errResp.Message)
 
 		mockAuthService.AssertExpectations(t)
 	})
@@ -135,6 +140,7 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/email", step1Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var actualResp models.AuthStep1Response
@@ -151,8 +157,16 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/api/auth/srp/login/email", bytes.NewBufferString("{invalID json"))
 		req.Header.Set("Content-Type", "application/json")
-		resp, _ := app.Test(req, -1)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Invalid request body", errResp.Message)
 		mockAuthService.AssertNotCalled(t, "ComputeB", mock.Anything)
 		mockAuthService.AssertExpectations(t)
 	})
@@ -167,13 +181,12 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/email", step1Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "User not found", errResp.Error)
-
+		assert.Equal(t, "User not found", errResp.Message)
 		mockAuthService.AssertExpectations(t)
 	})
 
@@ -187,13 +200,12 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/email", step1Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "Authentication initiation failed", errResp.Error)
-
+		assert.Equal(t, "Authentication initiation failed", errResp.Message)
 		mockAuthService.AssertExpectations(t)
 	})
 }
@@ -219,6 +231,7 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/proof", step2Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var actualResp models.AuthStep3Response
@@ -236,8 +249,16 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/api/auth/srp/login/proof", bytes.NewBufferString("{invalID json"))
 		req.Header.Set("Content-Type", "application/json")
-		resp, _ := app.Test(req, -1)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Invalid request body", errResp.Message)
 		mockAuthService.AssertNotCalled(t, "VerifyClientProof", mock.Anything)
 		mockAuthService.AssertExpectations(t)
 	})
@@ -253,13 +274,12 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/proof", step2Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "Authentication session expired or invalID", errResp.Error)
-
+		assert.Equal(t, "Authentication session expired or invalid", errResp.Message)
 		mockAuthService.AssertExpectations(t)
 	})
 
@@ -273,13 +293,12 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/proof", step2Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "InvalID client credentials", errResp.Error)
-
+		assert.Equal(t, "Invalid client credentials", errResp.Message)
 		mockAuthService.AssertExpectations(t)
 	})
 
@@ -292,13 +311,12 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/proof", step2Req)
 
+		defer resp.Body.Close()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-
-		var errResp models.ErrorResponse
+		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "Authentication verification failed", errResp.Error)
-
+		assert.Equal(t, "Authentication verification failed", errResp.Message)
 		mockAuthService.AssertExpectations(t)
 	})
 }

@@ -3,7 +3,6 @@ package handlers_test
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,8 +17,8 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/mocks"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/router"
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -27,8 +26,8 @@ import (
 )
 
 // Helper to setup OAuth test app
-func setupOAuthTestApp(mockOAuthService *mocks.MockOAuthService, cfg *config.Config) *fiber.App {
-	app := fiber.New()
+func setupOAuthTestApp(mockOAuthService *mocks.MockOAuthService, cfg *config.Config) *echo.Echo {
+	app := echo.New()
 	oauthHandler := handlers.NewOAuthHandler(mockOAuthService, cfg)
 	// Assuming router setup function exists or setting up manually
 	router.SetupOAuthRoutes(app, oauthHandler) // Use if available
@@ -58,10 +57,12 @@ func TestOAuthHandler_Login(t *testing.T) {
 
 	// Create the HTTP request
 	req := httptest.NewRequest("GET", "/api/auth/oauth/microsoft/login", nil)
-	resp, err := app.Test(req, -1)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	resp := rec.Result()
 
 	// --- Assertions ---
-	require.NoError(t, err, "app.Test should not return an error")
+	// require.NoError(t, err) // ServeHTTP doesn't return error directly for test purposes
 	// Ensure the response body is closed even if later assertions fail
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
@@ -116,12 +117,12 @@ func TestOAuthHandler_Callback(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// Reset mocks for subtest
 		mockOAuthService := new(mocks.MockOAuthService)
+
 		app := setupOAuthTestApp(mockOAuthService, cfg) // Recreate app with fresh mock
 
 		// Mock service calls
 		mockOAuthService.On("ExchangeCode", mock.Anything, testCode).Return(testToken, nil).Once()
-		mockOAuthService.On("GetUserInfo", mock.Anything, testToken).Return(testUser, nil).Once()
-
+		mockOAuthService.On("ProcessUserInfo", mock.Anything, testToken, "MICROSOFT").Return(testUser, nil).Once()
 		// Prepare request
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s&state=%s", testCode, testState)
 		req := httptest.NewRequest("GET", targetURL, nil)
@@ -131,8 +132,10 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState,
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		// Assertions
@@ -150,7 +153,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 
 		// Check response body
 		var respBody map[string]interface{}
-		err = json.NewDecoder(resp.Body).Decode(&respBody)
+		err := json.NewDecoder(resp.Body).Decode(&respBody)
 		require.NoError(t, err)
 		assert.Equal(t, "Login successful!", respBody["message"])
 
@@ -177,13 +180,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState, // Cookie has the correct state
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "Invalid state parameter")
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Invalid state parameter", errResp.Message)
 
 		// Check if state cookie was cleared even on error
 		foundClearCookie := false
@@ -211,13 +218,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState,
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "State parameter missing")
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "State parameter missing", errResp.Message)
 
 		// Check if state cookie was cleared
 		foundClearCookie := false
@@ -240,13 +251,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s&state=%s", testCode, testState)
 		req := httptest.NewRequest("GET", targetURL, nil) // No cookie added
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "State cookie missing")
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "State cookie missing or expired", errResp.Message)
 
 		// Check if state cookie was attempted to be cleared (it should be)
 		foundClearCookie := false
@@ -273,13 +288,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState,
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "Authorization code missing")
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Authorization code missing or error occurred during login.", errResp.Message)
 
 		mockOAuthService.AssertNotCalled(t, "ExchangeCode", mock.Anything, mock.Anything)
 	})
@@ -299,13 +318,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState,
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "Failed to exchange authorization code")
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Failed to exchange authorization code for token", errResp.Message)
 
 		mockOAuthService.AssertExpectations(t)
 		mockOAuthService.AssertNotCalled(t, "GetUserInfo", mock.Anything, mock.Anything)
@@ -318,7 +341,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 
 		userInfoErr := errors.New("failed to fetch user info")
 		mockOAuthService.On("ExchangeCode", mock.Anything, testCode).Return(testToken, nil).Once()
-		mockOAuthService.On("GetUserInfo", mock.Anything, testToken).Return(nil, userInfoErr).Once()
+		mockOAuthService.On("ProcessUserInfo", mock.Anything, testToken, "MICROSOFT").Return(nil, userInfoErr).Once()
 
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s&state=%s", testCode, testState)
 		req := httptest.NewRequest("GET", targetURL, nil)
@@ -327,13 +350,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState,
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "Failed to fetch user information")
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Failed to fetch user information", errResp.Message)
 
 		mockOAuthService.AssertExpectations(t)
 	})
@@ -352,13 +379,17 @@ func TestOAuthHandler_Callback(t *testing.T) {
 			Value: testState,
 		})
 
-		resp, err := app.Test(req, -1)
-		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		resp := rec.Result()
+		// require.NoError(t, err)
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		assert.Contains(t, string(bodyBytes), "Authorization code missing or error occurred during login: "+oauthErrorDesc)
+		var errResp *echo.HTTPError
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Authorization code missing or error occurred during login.", errResp.Message)
 
 		mockOAuthService.AssertNotCalled(t, "ExchangeCode", mock.Anything, mock.Anything)
 	})

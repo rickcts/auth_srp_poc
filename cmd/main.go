@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -73,7 +75,7 @@ func main() {
 
 	go func() {
 		log.Printf("Server starting on port %s...", cfg.Port)
-		if err := app.Listen(":" + cfg.Port); err != nil {
+		if err := app.Start(":" + cfg.Port); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
@@ -81,7 +83,7 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	if err := app.Shutdown(); err != nil {
+	if err := app.Shutdown(context.Background()); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 

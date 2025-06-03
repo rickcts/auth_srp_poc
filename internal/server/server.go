@@ -1,30 +1,30 @@
 package server
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
-// New creates and configures a Fiber app instance
-func New() *fiber.App {
-	app := fiber.New()
+// New creates and configures an Echo app instance
+func New() *echo.Echo {
+	e := echo.New()
 
 	// Middleware
-	app.Use(recover.New())
-	app.Use(logger.New())
+	e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
 
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowMethods: "GET,POST,PUT,DELETE",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
+		AllowHeaders: []string{"*"},
 	}))
 
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{
 			"status": "ok",
 		})
 	})
-	return app
+	return e
 }
