@@ -78,4 +78,23 @@ func (r *MemoryPasswordResetTokenRepository) CleanupExpiredTokens() {
 			delete(r.tokens, token)
 		}
 	}
+} // GetAuthIDForValidToken checks if a token is valid (exists, not expired)
+// without consuming it.
+func (r *MemoryPasswordResetTokenRepository) GetAuthIDForValidToken(ctx context.Context, token string) (string, error) {
+	r.mutex.RLock() // Read lock only
+	defer r.mutex.RUnlock()
+
+	entry, exists := r.tokens[token]
+	if !exists {
+		return "", repository.ErrPasswordResetTokenNotFound
+	}
+
+	if time.Now().UTC().After(entry.Expiry) {
+		// Token expired, return not found.
+		// Note: This method doesn't clean up expired tokens; cleanup happens on consumption.
+		return "", repository.ErrPasswordResetTokenNotFound
+	}
+
+	// Token is valid and not expired
+	return entry.AuthID, nil
 }

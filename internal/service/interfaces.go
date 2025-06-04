@@ -29,14 +29,15 @@ type SRPAuthService struct {
 }
 
 type JWTGenerator interface {
-	GenerateToken(userId int64) (token string, expiry time.Time, err error)
+	GenerateToken(authID string) (token string, expiry time.Time, err error)
 }
 
 type SessionGenerator interface {
+	// VerifySessionToken check if the token is stored in the session store
 	VerifySessionToken(ctx context.Context, sessionTokenID string) (*models.VerifyTokenResponse, error)
 	ExtendUserSession(ctx context.Context, currentSessionToken string) (*models.ExtendedSessionResponse, error)
 	SignOut(ctx context.Context, sessionToken string) error
-	SignOutUserSessions(ctx context.Context, userId int64, currentSessionTokenToExclude ...string) (int64, error)
+	SignOutUserSessions(ctx context.Context, authID string, currentSessionTokenToExclude ...string) (int64, error)
 }
 
 type SRPAuthGenerator interface {
@@ -48,12 +49,16 @@ type SRPAuthGenerator interface {
 	ComputeB(ctx context.Context, req models.AuthStep1Request) (*models.AuthStep1Response, error)
 	// VerifyClientProof handles SRP step 2 (Client -> Server: A, M1) and returns Step 3 info (Server -> Client: M2)
 	VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error)
-	// ChangePassword handles changing the password for an authenticated user. AuthID is typically derived from the session.
-	ChangePassword(ctx context.Context, authID string, req models.ChangePasswordRequest) error
 	// InitiatePasswordReset starts the password reset flow for a user.
 	InitiatePasswordReset(ctx context.Context, req models.InitiatePasswordResetRequest) error
+	// ValidatePasswordResetToken checks if a password reset token is valid without consuming it.
+	ValidatePasswordResetToken(ctx context.Context, req models.ValidatePasswordResetTokenRequest) (*models.ValidatePasswordResetTokenResponse, error)
 	// CompletePasswordReset completes the password reset flow using a token and new credentials.
 	CompletePasswordReset(ctx context.Context, req models.CompletePasswordResetRequest) error
+	// InitiatePasswordChangeVerification starts the process for a logged-in user to change their password by verifying their current one.
+	InitiatePasswordChangeVerification(ctx context.Context, authID string) (*models.InitiateChangePasswordResponse, error)
+	// ConfirmPasswordChange verifies the user's current password proof and updates to the new password credentials.
+	ConfirmPasswordChange(ctx context.Context, authID string, req models.ConfirmChangePasswordRequest) error
 }
 
 // EmailService defines an interface for sending emails.

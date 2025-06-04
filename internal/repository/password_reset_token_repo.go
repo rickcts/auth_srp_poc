@@ -17,4 +17,5 @@ type PasswordResetTokenRepository interface {
 	// and if so, returns the associated authID and consumes (deletes) the token to prevent reuse.
 	// It should return ErrPasswordResetTokenNotFound if the token is invalid or not found.
 	ValidateAndConsumeResetToken(ctx context.Context, token string) (authID string, err error)
+	GetAuthIDForValidToken(ctx context.Context, token string) (authID string, err error)
 }

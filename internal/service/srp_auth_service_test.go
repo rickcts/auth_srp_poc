@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -28,23 +27,8 @@ const (
 	testUserID      = int64(1)
 )
 
-// Helper to create a basic config for tests
-func createTestConfig() *config.Config {
-	return &config.Config{
-		JWTSecret: "test-secret",
-		SRP: config.SRPConfig{
-			Group:            "rfc5054.4096",
-			AuthStateExpiry:  time.Now().Add(5 * time.Minute),
-			HashingAlgorithm: crypto.SHA512,
-		},
-		Security: config.SecurityConfig{
-			PasswordResetTokenExpiry: 15 * time.Minute,
-		},
-	}
-}
-
 // Helper to generate valID SRP credentials for testing
-func generateTestCreds(username, password string, cfg *config.Config) (saltHex, verifierHex string, err error) {
+func generateTestCreds(authID, password string, cfg *config.Config) (saltHex, verifierHex string, err error) {
 	srpInstance, err := srp.NewSRP(cfg.SRP.Group, cfg.SRP.HashingAlgorithm.New, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create SRP instance: %w", err)
@@ -61,7 +45,7 @@ type srpAuthServiceTestDeps struct {
 	mockUserRepo               *mocks.MockUserRepository
 	mockStateRepo              *mocks.MockStateRepository
 	mockSessionRepo            *mocks.MockSessionRepository
-	mockTokenSvc               *mocks.MockTokenService
+	mockTokenSvc               *mocks.MockJWTGenerator
 	mockPasswordResetTokenRepo *mocks.MockPasswordResetTokenRepository
 	mockEmailSvc               *mocks.MockEmailService
 	cfg                        *config.Config
@@ -71,13 +55,13 @@ type srpAuthServiceTestDeps struct {
 // setupSRPAuthServiceTest initializes mocks and the service for testing.
 func setupSRPAuthServiceTest(t *testing.T) srpAuthServiceTestDeps {
 	t.Helper()
-	cfg := createTestConfig()
+	cfg := mocks.CreateTestConfigForSessionTests()
 
 	deps := srpAuthServiceTestDeps{
 		mockUserRepo:               new(mocks.MockUserRepository),
 		mockStateRepo:              new(mocks.MockStateRepository),
 		mockSessionRepo:            new(mocks.MockSessionRepository),
-		mockTokenSvc:               new(mocks.MockTokenService),
+		mockTokenSvc:               new(mocks.MockJWTGenerator),
 		mockPasswordResetTokenRepo: new(mocks.MockPasswordResetTokenRepository),
 		mockEmailSvc:               new(mocks.MockEmailService),
 		cfg:                        cfg,
@@ -328,7 +312,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 type verifyClientProofTestData struct {
 	cfg           *config.Config
 	userID        int64
-	username      string
+	authID        string
 	password      string
 	validState    models.AuthSessionState
 	req           models.AuthStep2Request
@@ -339,7 +323,7 @@ type verifyClientProofTestData struct {
 func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 	t.Helper() // Marks this as a test helper
 
-	cfg := createTestConfig() // Use the global test constants
+	cfg := mocks.CreateTestConfigForSessionTests()
 
 	// 1. Generate real Salt, Verifier
 	saltHex, verifierHex, err := generateTestCreds(testAuthID, testPassword, cfg)
@@ -386,7 +370,7 @@ func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 	return verifyClientProofTestData{
 		cfg:           cfg,
 		userID:        testUserID,   // Use constant
-		username:      testAuthID,   // Use constant
+		authID:        testAuthID,   // Use constant
 		password:      testPassword, // Use constant
 		validState:    validState,
 		req:           req,
@@ -403,17 +387,17 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		data := setupVerifyClientProofData(t)
 
 		// Mock expectations
-		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.username).Return(&models.UserInfo{
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.authID).Return(&models.UserInfo{
 			ID:           data.userID,
-			AuthID:       data.username,
+			AuthID:       data.authID,
 			AuthProvider: "SRP6",
 			AuthExtras:   map[string]string{"salt": "dummySalt", "verifier": "dummyVerifier"}, // Not strictly used by SRP logic here
 		}, nil).Once()
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
-		deps.mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Once()
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
+		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once()
 		expectedToken := "test-jwt-token"
 		expectedExpiry := time.Now().Add(1 * time.Hour)
-		deps.mockTokenSvc.On("GenerateToken", data.userID).Return(expectedToken, expectedExpiry, nil).Once()
+		deps.mockTokenSvc.On("GenerateToken", data.authID).Return(expectedToken, expectedExpiry, nil).Once()
 		deps.mockSessionRepo.On("StoreSession", ctx, mock.AnythingOfType("*models.Session")).Return(nil).Once()
 
 		// Execute
@@ -440,8 +424,8 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		data := setupVerifyClientProofData(t)
 
 		// Mock expectations
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(nil, repository.ErrStateNotFound).Once()
-		deps.mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Once() // Service calls this on GetAuthState failure
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(nil, repository.ErrStateNotFound).Once()
+		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once() // Service calls this on GetAuthState failure
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
@@ -465,8 +449,8 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		badReq.ClientProofM1 = hex.EncodeToString([]byte("invalidproof1234567890")) // Use a different invalid proof
 
 		// Mock expectations
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
-		deps.mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Once() // Called on M1 verification failure
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
+		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once() // Called on M1 verification failure
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(ctx, badReq)
@@ -489,7 +473,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		badReq.ClientA = "invalid-hex-a-value"
 
 		// Mock expectations (GetAuthState is called before A is decoded)
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(ctx, badReq)
@@ -499,8 +483,8 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		require.Nil(t, resp)
 		assert.Contains(t, err.Error(), "invalid client A format")
 
-		deps.mockStateRepo.AssertCalled(t, "GetAuthState", data.username)
-		deps.mockStateRepo.AssertNotCalled(t, "DeleteAuthState", data.username) // Not called if A decode fails
+		deps.mockStateRepo.AssertCalled(t, "GetAuthState", data.authID)
+		deps.mockStateRepo.AssertNotCalled(t, "DeleteAuthState", data.authID) // Not called if A decode fails
 		deps.mockTokenSvc.AssertNotCalled(t, "GenerateToken", mock.Anything)
 		deps.mockStateRepo.AssertExpectations(t)
 	})
@@ -509,19 +493,19 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps := setupSRPAuthServiceTest(t)
 		data := setupVerifyClientProofData(t)
 
-		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.username).Return(
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.authID).Return(
 			&models.UserInfo{
 				ID:           data.userID,
-				AuthID:       data.username,
+				AuthID:       data.authID,
 				AuthProvider: "SRP6",
 				AuthExtras:   map[string]string{"salt": "dummySalt", "verifier": "dummyVerifier"},
 			}, nil).Once()
 
 		// Mock expectations
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
-		deps.mockStateRepo.On("DeleteAuthState", data.username).Return(nil).Once() // Called before token generation
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
+		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once() // Called before token generation
 		tokenErr := errors.New("jwt signing error")
-		deps.mockTokenSvc.On("GenerateToken", data.userID).Return("", time.Time{}, tokenErr).Once()
+		deps.mockTokenSvc.On("GenerateToken", data.authID).Return("", time.Time{}, tokenErr).Once()
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
@@ -546,7 +530,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		badReq.ClientProofM1 = "invalid-hex-m1-value"
 
 		// Mock expectations (GetAuthState is called before M1 is decoded)
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(ctx, badReq)
@@ -556,8 +540,8 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		require.Nil(t, resp)
 		assert.Contains(t, err.Error(), "invalid client proof M1 format")
 
-		deps.mockStateRepo.AssertCalled(t, "GetAuthState", data.username)
-		deps.mockStateRepo.AssertNotCalled(t, "DeleteAuthState", data.username) // Not called if M1 decode fails
+		deps.mockStateRepo.AssertCalled(t, "GetAuthState", data.authID)
+		deps.mockStateRepo.AssertNotCalled(t, "DeleteAuthState", data.authID) // Not called if M1 decode fails
 		deps.mockTokenSvc.AssertNotCalled(t, "GenerateToken", mock.Anything)
 		deps.mockStateRepo.AssertExpectations(t)
 	})
@@ -569,7 +553,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 
 		badState := data.validState
 		badState.Server = nil // Simulate a corrupted or missing server session part
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&badState, nil).Once()
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&badState, nil).Once()
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(context.Background(), data.req)
@@ -579,8 +563,8 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		require.Nil(t, resp)
 		assert.Contains(t, err.Error(), "failed to create SRP server instance")
 
-		deps.mockStateRepo.AssertCalled(t, "GetAuthState", data.username)
-		deps.mockStateRepo.AssertNotCalled(t, "DeleteAuthState", data.username) // Not called if server is nil
+		deps.mockStateRepo.AssertCalled(t, "GetAuthState", data.authID)
+		deps.mockStateRepo.AssertNotCalled(t, "DeleteAuthState", data.authID) // Not called if server is nil
 		deps.mockTokenSvc.AssertNotCalled(t, "GenerateToken", mock.Anything)
 		deps.mockUserRepo.AssertNotCalled(t, "GetUserInfoByAuthID", mock.Anything, mock.Anything)
 		deps.mockStateRepo.AssertExpectations(t)
@@ -593,18 +577,18 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		data := setupVerifyClientProofData(t)
 
 		// Mock expectations
-		deps.mockStateRepo.On("GetAuthState", data.username).Return(&data.validState, nil).Once()
+		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
 		deleteErr := errors.New("db connection lost")
-		deps.mockStateRepo.On("DeleteAuthState", data.username).Return(deleteErr).Once() // Simulate error during delete
+		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(deleteErr).Once() // Simulate error during delete
 
 		expectedToken := "test-jwt-token"
 		expectedExpiry := time.Now().Add(1 * time.Hour)
-		deps.mockTokenSvc.On("GenerateToken", data.userID).Return(expectedToken, expectedExpiry, nil).Once() // Token generation still happens
+		deps.mockTokenSvc.On("GenerateToken", data.authID).Return(expectedToken, expectedExpiry, nil).Once() // Token generation still happens
 
-		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.username).Return(
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.authID).Return(
 			&models.UserInfo{
 				ID:           data.userID,
-				AuthID:       data.username,
+				AuthID:       data.authID,
 				AuthProvider: "SRP6",
 				AuthExtras:   map[string]string{"salt": "dummySalt", "verifier": "dummyVerifier"},
 			}, nil).Once()

@@ -3,7 +3,6 @@ package handlers
 import (
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
@@ -24,6 +23,7 @@ func NewJWTAuthHandler(authService service.JWTGenerator, sessionService service.
 	}
 }
 
+// VerifyToken verifies jwt token and check if it is currently valid session token
 func (h *JWTAuthHandler) VerifyToken(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
@@ -44,7 +44,6 @@ func (h *JWTAuthHandler) VerifyToken(c echo.Context) error {
 	resp, err := h.SessionService.VerifySessionToken(ctx, sessionTokenID)
 	if err != nil {
 		log.Printf("[JWTAuthHandler.VerifyToken] Session verification failed for token %.10s...: %v", sessionTokenID, err)
-		// Return 401 if the session is not found or expired
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired session token")
 	}
 
@@ -56,6 +55,7 @@ func (h *JWTAuthHandler) VerifyToken(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// Logout current session by delete sessionID in the session store
 func (h *JWTAuthHandler) Logout(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
@@ -81,8 +81,8 @@ func (h *JWTAuthHandler) Logout(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully logged out"})
 }
 
-// LogoutAllDevices handles logging out the user from all other devices.
-func (h *JWTAuthHandler) LogoutAllDevices(c echo.Context) error {
+// LogoutAllDevices handles logging out the user for all logged in sessions.
+func (h *JWTAuthHandler) LogoutAllSessions(c echo.Context) error {
 	userContext := c.Get("user")
 	if userContext == nil {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error: 'user' not found in context. This indicates a middleware issue or misconfiguration.")
@@ -97,11 +97,11 @@ func (h *JWTAuthHandler) LogoutAllDevices(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error: user context type mismatch")
 	}
 
-	userIDString, err := user.Claims.GetSubject()
+	authID, err := user.Claims.GetSubject()
 	if err != nil {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error getting subject claim from token: %v", err)
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: cannot get subject")
-	} else if userIDString == "" { // Add this check
+	} else if authID == "" {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error: Subject claim is empty in token.")
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: subject claim is missing or empty")
 	}
@@ -124,18 +124,13 @@ func (h *JWTAuthHandler) LogoutAllDevices(c echo.Context) error {
 	if sessionTokenID != "" {
 		excludeTokens = append(excludeTokens, sessionTokenID)
 	}
-	userID, err := strconv.ParseInt(userIDString, 10, 64)
-	if err != nil {
-		log.Printf("[JWTAuthHandler.LogoutAllDevices] Failed to parse UserID string '%s': %v", userIDString, err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to parse user identifier")
-	}
 
-	deletedCount, err := h.SessionService.SignOutUserSessions(c.Request().Context(), userID, excludeTokens...)
+	deletedCount, err := h.SessionService.SignOutUserSessions(c.Request().Context(), authID, excludeTokens...)
 	if err != nil {
-		log.Printf("[JWTAuthHandler.LogoutAllDevices] Failed to logout other devices for UserID %v: %v", userID, err)
+		log.Printf("[JWTAuthHandler.LogoutAllDevices] Failed to logout all devices for AuthID %v: %v", authID, err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to logout other devices")
 	}
 
-	log.Printf("[JWTAuthHandler.LogoutAllDevices] Successfully logged out %d other devices for UserID %v", deletedCount, userID)
+	log.Printf("[JWTAuthHandler.LogoutAllDevices] Successfully logged out %d other devices for AuthID %v", deletedCount, authID)
 	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully logged out other devices.", "devices_logged_out": deletedCount})
 }

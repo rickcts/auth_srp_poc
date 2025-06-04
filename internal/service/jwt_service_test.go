@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -21,10 +20,10 @@ func TestNewTokenService(t *testing.T) {
 
 func TestJWTService_GenerateToken(t *testing.T) {
 	service := NewTokenService(testSecret)
-	userID := int64(123)
+	authID := "test-user"
 
 	t.Run("Success", func(t *testing.T) {
-		tokenString, expiry, err := service.GenerateToken(userID)
+		tokenString, expiry, err := service.GenerateToken(authID)
 
 		require.NoError(t, err, "GenerateToken should not return an error")
 		require.NotEmpty(t, tokenString, "Generated token string should not be empty")
@@ -49,7 +48,7 @@ func TestJWTService_GenerateToken(t *testing.T) {
 		require.True(t, ok, "Token claims should be of type jwt.MapClaims")
 
 		// Verify standard claims
-		assert.Equal(t, fmt.Sprint(userID), claims["sub"], "Subject claim (sub) is incorrect")
+		assert.Equal(t, fmt.Sprint(authID), claims["sub"], "Subject claim (sub) is incorrect")
 		assert.Equal(t, "scs-auth-server", claims["iss"], "Issuer claim (iss) is incorrect")
 		assert.Equal(t, "scs-client-app", claims["aud"], "Audience claim (aud) is incorrect")
 
@@ -67,9 +66,9 @@ func TestJWTService_GenerateToken(t *testing.T) {
 		assert.InDelta(t, time.Now().Unix(), int64(nbfClaim), 5, "NotBefore claim (nbf) is not recent") // Allow 5s delta
 	})
 
-	t.Run("UserIDZero", func(t *testing.T) {
-		userIDZero := int64(0)
-		tokenString, _, err := service.GenerateToken(userIDZero)
+	t.Run("AuthID Empty", func(t *testing.T) {
+		authID := ""
+		tokenString, _, err := service.GenerateToken(authID)
 		require.NoError(t, err)
 		require.NotEmpty(t, tokenString)
 
@@ -79,7 +78,7 @@ func TestJWTService_GenerateToken(t *testing.T) {
 		require.NoError(t, err)
 		claims, ok := token.Claims.(jwt.MapClaims)
 		require.True(t, ok)
-		assert.Equal(t, strconv.FormatInt(userIDZero, 10), claims["sub"], "Subject claim for userID 0 is incorrect")
+		assert.Equal(t, "", claims["sub"], "Subject claim for userID 0 is incorrect")
 	})
 
 	// Note: It's hard to make token.SignedString fail in a unit test if the secret is valid and non-empty,

@@ -25,8 +25,9 @@ import (
 
 func setupTestApp(mockAuthService *mocks.MockSRPAuthService) *echo.Echo {
 	app := echo.New()
+	cfg := mocks.CreateTestConfigForSessionTests()
 	authHandler := handlers.NewSRPAuthHandler(mockAuthService)
-	router.SetupSRPRoutes(app, authHandler)
+	router.SetupSRPRoutes(app, authHandler, cfg)
 	return app
 }
 
@@ -65,7 +66,7 @@ func TestAuthHandler_Register(t *testing.T) {
 		mockAuthService.AssertExpectations(t)
 	})
 
-	t.Run("BadRequestInvalIDJSON", func(t *testing.T) {
+	t.Run("BadRequestInvalidJSON", func(t *testing.T) {
 		// Setup insIDe subtest (need app, even if mock isn't called)
 		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
@@ -151,7 +152,7 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 		mockAuthService.AssertExpectations(t)
 	})
 
-	t.Run("BadRequestInvalIDJSON", func(t *testing.T) {
+	t.Run("BadRequestInvalidJSON", func(t *testing.T) {
 		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
@@ -242,12 +243,12 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 		mockAuthService.AssertExpectations(t)
 	})
 
-	t.Run("BadRequestInvalIDJSON", func(t *testing.T) {
+	t.Run("BadRequestInvalidJSON", func(t *testing.T) {
 		// Setup insIDe subtest
 		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
-		req := httptest.NewRequest("POST", "/api/auth/srp/login/proof", bytes.NewBufferString("{invalID json"))
+		req := httptest.NewRequest("POST", "/api/auth/srp/login/proof", bytes.NewBufferString("{invalid json"))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		app.ServeHTTP(rec, req)
@@ -283,7 +284,7 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 		mockAuthService.AssertExpectations(t)
 	})
 
-	t.Run("UnauthorizedInvalIDProof", func(t *testing.T) {
+	t.Run("UnauthorizedInvalidProof", func(t *testing.T) {
 		// Setup insIDe subtest
 		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)

@@ -62,12 +62,6 @@ type MobileLoginRequest struct {
 	AuthProvider string `json:"authProvider"`
 }
 
-// ChangePasswordRequest is the input for changing a user's password.
-type ChangePasswordRequest struct {
-	NewSalt     string `json:"newSalt"`     // Hex encoded new salt 's'
-	NewVerifier string `json:"newVerifier"` // Hex encoded new verifier 'v'
-}
-
 // InitiatePasswordResetRequest is the input for starting the password reset process.
 type InitiatePasswordResetRequest struct {
 	AuthID string `json:"authId"` // Typically the user's email
@@ -78,4 +72,29 @@ type CompletePasswordResetRequest struct {
 	Token       string `json:"token"`       // The password reset token
 	NewSalt     string `json:"newSalt"`     // Hex encoded new salt 's'
 	NewVerifier string `json:"newVerifier"` // Hex encoded new verifier 'v'
+}
+
+// ValidatePasswordResetTokenRequest is the input for validating a password reset token.
+type ValidatePasswordResetTokenRequest struct {
+	Token string `json:"token"` // The password reset token (6-digit code)
+}
+
+// ValidatePasswordResetTokenResponse is the output after validating a password reset token.
+type ValidatePasswordResetTokenResponse struct {
+	IsValid bool   `json:"isValid"`
+	AuthID  string `json:"authId,omitempty"` // AuthID associated with the token, if valid. Only populated if IsValid is true.
+}
+
+type InitiateChangePasswordResponse struct {
+	Salt    string `json:"salt"`    // User's current salt
+	ServerB string `json:"serverB"` // Server's public ephemeral 'B' for current password verification
+}
+
+// ConfirmChangePasswordRequest is sent by the client to confirm the password change.
+// AuthID is implicit from the session token.
+type ConfirmChangePasswordRequest struct {
+	ClientA     string `json:"clientA"`     // Client's public ephemeral 'A' for current password
+	ClientM1    string `json:"clientM1"`    // Client's proof M1 for current password
+	NewSalt     string `json:"newSalt"`     // New salt for the new password
+	NewVerifier string `json:"newVerifier"` // New verifier for the new password
 }

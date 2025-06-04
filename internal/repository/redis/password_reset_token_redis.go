@@ -72,3 +72,21 @@ func (r *RedisPasswordResetTokenRepository) ValidateAndConsumeResetToken(ctx con
 
 	return authID, nil
 }
+
+// GetAuthIDForValidToken checks if a token (6-digit code) is valid (exists and not expired)
+// without consuming it.
+func (r *RedisPasswordResetTokenRepository) GetAuthIDForValidToken(ctx context.Context, token string) (string, error) {
+	key := r.makeKey(token)
+
+	authID, err := r.client.Get(ctx, key).Result()
+
+	if err == redis.Nil { // Token not found or expired
+		return "", repository.ErrPasswordResetTokenNotFound
+	}
+	if err != nil { // Other Redis error
+		return "", fmt.Errorf("failed to retrieve password reset token from redis: %w", err)
+	}
+
+	// If we got here, the token exists and was not expired at the time of the GET call.
+	return authID, nil
+}

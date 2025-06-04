@@ -64,7 +64,7 @@ func main() {
 			emailService,
 			cfg,
 		),
-	))
+	), cfg)
 	router.SetupOAuthRoutes(app, handlers.NewOAuthHandler(
 		service.NewMSOAuthService(cfg, userRepo),
 		cfg,

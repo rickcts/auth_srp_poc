@@ -34,11 +34,6 @@ func (m *MockSRPAuthService) VerifyClientProof(ctx context.Context, req models.A
 	return resp, args.Error(1)
 }
 
-func (m *MockSRPAuthService) ChangePassword(ctx context.Context, authID string, req models.ChangePasswordRequest) error {
-	args := m.Called(authID, req)
-	return args.Error(0)
-}
-
 func (m *MockSRPAuthService) InitiatePasswordReset(ctx context.Context, req models.InitiatePasswordResetRequest) error {
 	args := m.Called(ctx, req)
 	return args.Error(0)
@@ -46,5 +41,20 @@ func (m *MockSRPAuthService) InitiatePasswordReset(ctx context.Context, req mode
 
 func (m *MockSRPAuthService) CompletePasswordReset(ctx context.Context, req models.CompletePasswordResetRequest) error {
 	args := m.Called(ctx, req)
+	return args.Error(0)
+}
+func (m *MockSRPAuthService) ValidatePasswordResetToken(ctx context.Context, req models.ValidatePasswordResetTokenRequest) (*models.ValidatePasswordResetTokenResponse, error) {
+	args := m.Called(ctx, req)
+	resp, _ := args.Get(0).(*models.ValidatePasswordResetTokenResponse)
+	return resp, args.Error(1)
+}
+
+func (m *MockSRPAuthService) InitiatePasswordChangeVerification(ctx context.Context, authID string) (*models.InitiateChangePasswordResponse, error) {
+	args := m.Called(ctx, authID)
+	resp, _ := args.Get(0).(*models.InitiateChangePasswordResponse)
+	return resp, args.Error(1)
+}
+func (m *MockSRPAuthService) ConfirmPasswordChange(ctx context.Context, authID string, req models.ConfirmChangePasswordRequest) error {
+	args := m.Called(ctx, authID, req)
 	return args.Error(0)
 }

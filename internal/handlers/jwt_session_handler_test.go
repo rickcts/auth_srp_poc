@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
@@ -39,7 +38,7 @@ func setupJWTAuthHandlerTest(t *testing.T) jwtAuthHandlerTestDeps {
 	// This avoids needing the full router setup with actual middleware for unit tests
 	deps.echo.POST("/verify", deps.handler.VerifyToken)
 	deps.echo.GET("/logout", deps.handler.Logout) // Assuming GET based on router, adjust if POST
-	deps.echo.POST("/logout-all", deps.handler.LogoutAllDevices)
+	deps.echo.POST("/logout-all", deps.handler.LogoutAllSessions)
 	return deps
 }
 
@@ -247,8 +246,7 @@ func TestJWTAuthHandler_Logout(t *testing.T) {
 }
 
 func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
-	userID := int64(123)
-	userIDStr := strconv.FormatInt(userID, 10)
+	authID := "user-auth-id-123" // authID is typically a string
 	currentToken := "current-active-token"
 
 	createTestToken := func(subject string) *jwt.Token {
@@ -267,7 +265,7 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 			c.Set("user", userContextToken)
 		}
 		// Call handler directly as it depends on c.Get("user")
-		err := deps.handler.LogoutAllDevices(c)
+		err := deps.handler.LogoutAllSessions(c)
 		if err != nil {
 			// If handler returns error, echo might not have written to `rec` yet.
 			// We need to send the error through echo's error handler to populate `rec`.
@@ -279,10 +277,10 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		deletedCount := int64(5)
-		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, userID, currentToken).
+		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID, currentToken).
 			Return(deletedCount, nil).Once()
 
-		rec := performLogoutAllRequest(deps, currentToken, createTestToken(userIDStr))
+		rec := performLogoutAllRequest(deps, currentToken, createTestToken(authID))
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var respMap map[string]interface{}
@@ -316,7 +314,7 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.Set("user", "this-is-not-a-jwt-token") // Set user to a wrong type
 
-		err := deps.handler.LogoutAllDevices(c)
+		err := deps.handler.LogoutAllSessions(c)
 		if err != nil {
 			e.HTTPErrorHandler(err, c)
 		}
@@ -332,25 +330,27 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		badToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"not_sub": "anything"}) // No "sub"
 		rec := performLogoutAllRequest(deps, currentToken, badToken)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
-		var errResp echo.HTTPError
-		_ = json.Unmarshal(rec.Body.Bytes(), &errResp)
+		var errResp echo.HTTPError // When "sub" claim is missing, GetSubject() errors.
+		err := json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
 		assert.Equal(t, "Invalid token: subject claim is missing or empty", errResp.Message)
 	})
 
 	t.Run("MissingAuthHeaderForExclusionButUserInContextIsValid", func(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		deletedCount := int64(5)
-		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, userID). // No variadic args passed if excludeTokens is empty
-												Return(deletedCount, nil).Once()
+		// Service will be called with authID and an empty excludeTokens list
+		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID).
+			Return(deletedCount, nil).Once()
 
 		// Simulate request where Auth header for exclusion is missing, but user is in context (from middleware)
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodPost, "/logout-all", nil) // No Auth Header
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.Set("user", createTestToken(userIDStr)) // "user" IS set by middleware
+		c.Set("user", createTestToken(authID)) // "user" IS set by middleware
 
-		err := deps.handler.LogoutAllDevices(c) // Call handler directly
+		err := deps.handler.LogoutAllSessions(c)
 		if err != nil {
 			e.HTTPErrorHandler(err, c)
 		}
@@ -362,7 +362,7 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		deletedCount := int64(5)
 		// Service will be called with an empty exclude list because the token part of "Bearer " is empty
-		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, userID). // No variadic args
+		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID). // No variadic args
 												Return(deletedCount, nil).Once()
 
 		e := echo.New()
@@ -370,9 +370,9 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		req.Header.Set("Authorization", "InvalidFormat") // Malformed Auth Header for exclusion
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.Set("user", createTestToken(userIDStr)) // "user" IS set by middleware
+		c.Set("user", createTestToken(authID)) // "user" IS set by middleware
 
-		err := deps.handler.LogoutAllDevices(c)
+		err := deps.handler.LogoutAllSessions(c)
 		if err != nil {
 			e.HTTPErrorHandler(err, c)
 		}
@@ -380,24 +380,27 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		deps.mockSessionService.AssertExpectations(t)
 	})
 
-	t.Run("InvalidUserIDString", func(t *testing.T) {
+	t.Run("UserInContextButTokenSubjectEmpty", func(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
-		rec := performLogoutAllRequest(deps, currentToken, createTestToken("not-an-int"))
+		// Create a token with an empty subject claim
+		emptySubjectToken := createTestToken("")
+		rec := performLogoutAllRequest(deps, currentToken, emptySubjectToken)
 
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		var errResp echo.HTTPError
-		_ = json.Unmarshal(rec.Body.Bytes(), &errResp)
-		assert.Equal(t, "Failed to parse user identifier", errResp.Message)
+		err := json.Unmarshal(rec.Body.Bytes(), &errResp)
+		require.NoError(t, err)
+		assert.Equal(t, "Invalid token: subject claim is missing or empty", errResp.Message)
 		deps.mockSessionService.AssertNotCalled(t, "SignOutUserSessions", mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("SessionServiceError", func(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		serviceErr := errors.New("db error during mass logout")
-		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, userID, currentToken).
+		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID, currentToken).
 			Return(int64(0), serviceErr).Once()
 
-		rec := performLogoutAllRequest(deps, currentToken, createTestToken(userIDStr))
+		rec := performLogoutAllRequest(deps, currentToken, createTestToken(authID))
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 		var errResp echo.HTTPError
@@ -413,7 +416,7 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		// or if the logic decided excludeTokens should be empty.
 		// The handler code: `if sessionTokenID != "" { excludeTokens = append(excludeTokens, sessionTokenID) }`
 		// So if sessionTokenID (from header) is empty, excludeTokens is empty.
-		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, userID). // No variadic args
+		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID). // No variadic args
 												Return(deletedCount, nil).Once()
 
 		// Simulate request where "Authorization: Bearer " (empty token)
@@ -422,9 +425,9 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer ") // Empty token part
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.Set("user", createTestToken(userIDStr))
+		c.Set("user", createTestToken(authID))
 
-		err := deps.handler.LogoutAllDevices(c)
+		err := deps.handler.LogoutAllSessions(c)
 		if err != nil {
 			e.HTTPErrorHandler(err, c)
 		}

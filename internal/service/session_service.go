@@ -32,7 +32,7 @@ func (s *SRPAuthService) SignOut(ctx context.Context, sessionToken string) error
 	return nil
 }
 
-// ExtendUserSession valIDates an existing session token, issues a new one with a new expiry,
+// ExtendUserSession valIdates an existing session token, issues a new one with a new expiry,
 // and stores the new session.
 func (s *SRPAuthService) ExtendUserSession(ctx context.Context, currentSessionToken string) (*models.ExtendedSessionResponse, error) {
 	if currentSessionToken == "" {
@@ -51,38 +51,41 @@ func (s *SRPAuthService) ExtendUserSession(ctx context.Context, currentSessionTo
 	}
 
 	if currentSession.IsExpired() {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Current session for token '%s' (User: %v) is expired.", currentSessionToken, currentSession.UserID)
+		log.Printf("[AuthService.ExtendUserSession] ERROR: Current session for token '%s' (User: %v) is expired.", currentSessionToken, currentSession.AuthID)
 		// Proactively delete it if found expired here, though GetSession implementation should handle this.
 		_ = s.sessionRepo.DeleteSession(ctx, currentSessionToken)
 		return nil, repository.ErrSessionNotFound
 	}
 
+	authID := currentSession.AuthID
 	userID := currentSession.UserID
-	log.Printf("[AuthService.ExtendUserSession] Current session for token '%s' (User: %v) is valID. Proceeding with extension.", currentSessionToken, userID)
+
+	log.Printf("[AuthService.ExtendUserSession] Current session for token '%s' (User: %v) is valid. Proceeding with extension.", currentSessionToken, authID)
 
 	err = s.sessionRepo.DeleteSession(ctx, currentSessionToken)
 	if err != nil && !errors.Is(err, repository.ErrSessionNotFound) {
-		log.Printf("[AuthService.ExtendUserSession] WARN: Failed to delete old session for token '%s' (User: %v): %v", currentSessionToken, userID, err)
+		log.Printf("[AuthService.ExtendUserSession] WARN: Failed to delete old session for token '%s' (User: %v): %v", currentSessionToken, authID, err)
 	}
 
-	newSessionToken, newExpiry, err := s.tokenSvc.GenerateToken(userID)
+	newSessionToken, newExpiry, err := s.tokenSvc.GenerateToken(authID)
 	if err != nil {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to generate new token for user '%v': %v", userID, err)
+		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to generate new token for user '%v': %v", authID, err)
 		return nil, fmt.Errorf("failed to generate new session token: %w", err)
 	}
 
 	newSession := &models.Session{
 		SessionID: newSessionToken,
+		AuthID:    authID,
 		UserID:    userID,
 		Expiry:    newExpiry,
 	}
 
 	if err := s.sessionRepo.StoreSession(ctx, newSession); err != nil {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to store new session for user '%v' (New Token: %s): %v", userID, newSessionToken, err)
+		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to store new session for user '%v' (New Token: %s): %v", authID, newSessionToken, err)
 		return nil, fmt.Errorf("failed to store new session: %w", err)
 	}
 
-	log.Printf("[AuthService.ExtendUserSession] SUCCESS: Session extended for user '%v'. New Token: %s, New Expiry: %v", userID, newSessionToken, newExpiry)
+	log.Printf("[AuthService.ExtendUserSession] SUCCESS: Session extended for user '%v'. New Token: %s, New Expiry: %v", authID, newSessionToken, newExpiry)
 
 	return &models.ExtendedSessionResponse{
 		NewSessionToken: newSessionToken,
@@ -120,11 +123,17 @@ func (s *SRPAuthService) VerifySessionToken(ctx context.Context, sessionTokenID 
 	}, nil
 }
 
-// SignOutUserSessions invalIDates all sessions for a given user, optionally excluding some.
-func (s *SRPAuthService) SignOutUserSessions(ctx context.Context, userID int64, currentSessionTokenToExclude ...string) (int64, error) {
-	if userID <= 0 {
+// SignOutUserSessions invalidates all sessions for a given user, optionally excluding some.
+func (s *SRPAuthService) SignOutUserSessions(ctx context.Context, authID string, currentSessionTokenToExclude ...string) (int64, error) {
+	if authID == "" {
 		return 0, errors.New("userID cannot be empty")
 	}
+	user, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
+	if err != nil {
+
+	}
+	userID := user.ID
+
 	log.Printf("[AuthService.SignOutUserSessions] Attempting to sign out all sessions for UserID: %v, excluding %d tokens", userID, len(currentSessionTokenToExclude))
 
 	deletedCount, err := s.sessionRepo.DeleteUserSessions(ctx, userID, currentSessionTokenToExclude...)

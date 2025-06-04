@@ -90,8 +90,8 @@ func (r *RedisSessionRepository) GetSession(ctx context.Context, SessionID strin
 	if session.IsExpired() {
 		pipe := r.client.Pipeline()
 		pipe.Del(ctx, sessionKey)
-		if session.UserID > 0 { // Only try to remove from set if userID is valid and was indexed
-			pipe.SRem(ctx, makeUserSessionsKey(session.UserID), SessionID)
+		if session.UserID >= 0 {
+			pipe.SRem(ctx, makeUserSessionsKey(session.UserID), session.SessionID)
 		}
 		_, _ = pipe.Exec(ctx)
 		return nil, repository.ErrSessionNotFound
