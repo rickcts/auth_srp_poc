@@ -42,14 +42,14 @@ func generateTestCreds(authID, password string, cfg *config.Config) (saltHex, ve
 
 // srpAuthServiceTestDeps holds common dependencies for SRPAuthService tests
 type srpAuthServiceTestDeps struct {
-	mockUserRepo               *mocks.MockUserRepository
-	mockStateRepo              *mocks.MockStateRepository
-	mockSessionRepo            *mocks.MockSessionRepository
-	mockTokenSvc               *mocks.MockJWTGenerator
-	mockPasswordResetTokenRepo *mocks.MockPasswordResetTokenRepository
-	mockEmailSvc               *mocks.MockEmailService
-	cfg                        *config.Config
-	authService                SRPAuthGenerator // Use the interface
+	mockUserRepo              *mocks.MockUserRepository
+	mockStateRepo             *mocks.MockStateRepository
+	mockSessionRepo           *mocks.MockSessionRepository
+	mockTokenSvc              *mocks.MockJWTGenerator                // Assuming JWTGenerator mock is correct
+	mockVerificationTokenRepo *mocks.MockVerificationTokenRepository // Changed
+	mockEmailSvc              *mocks.MockEmailService
+	cfg                       *config.Config
+	authService               SRPAuthGenerator // Use the interface
 }
 
 // setupSRPAuthServiceTest initializes mocks and the service for testing.
@@ -58,20 +58,20 @@ func setupSRPAuthServiceTest(t *testing.T) srpAuthServiceTestDeps {
 	cfg := mocks.CreateTestConfigForSessionTests()
 
 	deps := srpAuthServiceTestDeps{
-		mockUserRepo:               new(mocks.MockUserRepository),
-		mockStateRepo:              new(mocks.MockStateRepository),
-		mockSessionRepo:            new(mocks.MockSessionRepository),
-		mockTokenSvc:               new(mocks.MockJWTGenerator),
-		mockPasswordResetTokenRepo: new(mocks.MockPasswordResetTokenRepository),
-		mockEmailSvc:               new(mocks.MockEmailService),
-		cfg:                        cfg,
+		mockUserRepo:              new(mocks.MockUserRepository),
+		mockStateRepo:             new(mocks.MockStateRepository),
+		mockSessionRepo:           new(mocks.MockSessionRepository),
+		mockTokenSvc:              new(mocks.MockJWTGenerator),
+		mockVerificationTokenRepo: new(mocks.MockVerificationTokenRepository),
+		mockEmailSvc:              new(mocks.MockEmailService),
+		cfg:                       cfg,
 	}
 	deps.authService = NewSRPAuthService(
 		deps.mockUserRepo,
 		deps.mockStateRepo,
 		deps.mockSessionRepo,
 		deps.mockTokenSvc,
-		deps.mockPasswordResetTokenRepo,
+		deps.mockVerificationTokenRepo, // Changed
 		deps.mockEmailSvc,
 		deps.cfg,
 	)
@@ -289,7 +289,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 			subTestDeps.mockStateRepo,
 			subTestDeps.mockSessionRepo,
 			subTestDeps.mockTokenSvc,
-			subTestDeps.mockPasswordResetTokenRepo,
+			subTestDeps.mockVerificationTokenRepo,
 			subTestDeps.mockEmailSvc,
 			&badCfg,
 		)

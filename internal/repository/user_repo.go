@@ -19,7 +19,7 @@ type UserRepository interface {
 	CheckIfUserExists(ctx context.Context, authID string) (bool, error)
 
 	// Set user as active
-	ActivateUser(ctx context.Context, userID int64) error
+	ActivateUser(ctx context.Context, authID int64) error
 
 	// GetUser retrieves the information.
 	// It should return ErrUserNotFound if the user does not exist.
@@ -33,3 +33,4 @@ type UserRepository interface {
 // Common errors
 var ErrUserNotFound = fmt.Errorf("user not found")
 var ErrUserExists = fmt.Errorf("user already exists")
+var ErrUserNotActivated = fmt.Errorf("user has not been activated")

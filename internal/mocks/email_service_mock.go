@@ -14,3 +14,8 @@ func (m *MockEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, 
 	args := m.Called(ctx, toEmail, resetCode, resetContextInfo)
 	return args.Error(0)
 }
+
+func (m *MockEmailService) SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error {
+	args := m.Called(ctx, toEmail, activationCode, appName)
+	return args.Error(0)
+}

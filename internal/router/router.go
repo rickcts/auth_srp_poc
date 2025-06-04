@@ -18,10 +18,12 @@ func SetupUserRoutes(e *echo.Echo, authHandler *handlers.JWTAuthHandler, cfg *co
 func SetupSRPRoutes(e *echo.Echo, authHandler *handlers.SRPAuthHandler, cfg *config.Config) {
 	api := e.Group("/api/auth/srp")
 
-	api.GET("/sign-up/email", authHandler.CheckEmailExists) // Check if email is already in the DB, kinda unsafe for enumeration attacks, but whatever that's the flow
-	api.POST("/sign-up", authHandler.Register)              // User registration
-	api.POST("/login/email", authHandler.AuthStep1)         // SRP Step 1 (Client sends email)
-	api.POST("/login/proof", authHandler.AuthStep2)         // SRP Step 2 (Client sends proof)
+	api.GET("/sign-up/check", authHandler.CheckEmailExists)                          // Check if email is already in the DB, kinda unsafe for enumeration attacks, but whatever that's the flow
+	api.POST("/sign-up", authHandler.Register)                                       // User registration
+	api.GET("/sign-up/verification", authHandler.GenerateCodeAndSendActivationEmail) // Send activation email (if not activated)
+	api.POST("/sign-up/activate", authHandler.ActivateAccount)                       // Activate the account
+	api.POST("/login/email", authHandler.AuthStep1)                                  // SRP Step 1 (client sends email)
+	api.POST("/login/proof", authHandler.AuthStep2)                                  // SRP Step 2 (client sends proof)
 
 	api.POST("/password/reset", authHandler.InitiatePasswordReset)               // Send a reset email if the email is in the database
 	api.POST("/password/reset/validate", authHandler.ValidatePasswordResetToken) // Validate if the reset token is valid

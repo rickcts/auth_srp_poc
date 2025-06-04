@@ -28,14 +28,14 @@ const (
 
 // sessionServiceTestDeps holds common dependencies for SRPAuthService's session method tests
 type sessionServiceTestDeps struct {
-	mockUserRepo               *mocks.MockUserRepository
-	mockStateRepo              *mocks.MockStateRepository
-	mockSessionRepo            *mocks.MockSessionRepository
-	mockTokenSvc               *mocks.MockJWTGenerator // Renamed from MockTokenService for clarity
-	mockPasswordResetTokenRepo *mocks.MockPasswordResetTokenRepository
-	mockEmailSvc               *mocks.MockEmailService
-	cfg                        *config.Config
-	service                    *SRPAuthService // Concrete type to test its methods
+	mockUserRepo              *mocks.MockUserRepository
+	mockStateRepo             *mocks.MockStateRepository // Assuming StateRepository mock is correct
+	mockSessionRepo           *mocks.MockSessionRepository
+	mockTokenSvc              *mocks.MockJWTGenerator                // Renamed from MockTokenService for clarity
+	mockVerificationTokenRepo *mocks.MockVerificationTokenRepository // Changed to VerificationTokenRepository
+	mockEmailSvc              *mocks.MockEmailService                // Assuming EmailService mock is correct
+	cfg                       *config.Config
+	service                   SessionGenerator // Use the interface for session methods
 }
 
 // setupSessionServiceTest initializes mocks and the service for testing session methods.
@@ -44,20 +44,20 @@ func setupSessionServiceTest(t *testing.T) sessionServiceTestDeps {
 	cfg := mocks.CreateTestConfigForSessionTests()
 
 	deps := sessionServiceTestDeps{
-		mockUserRepo:               new(mocks.MockUserRepository),
-		mockStateRepo:              new(mocks.MockStateRepository),
-		mockSessionRepo:            new(mocks.MockSessionRepository),
-		mockTokenSvc:               new(mocks.MockJWTGenerator),
-		mockPasswordResetTokenRepo: new(mocks.MockPasswordResetTokenRepository),
-		mockEmailSvc:               new(mocks.MockEmailService),
-		cfg:                        cfg,
+		mockUserRepo:              new(mocks.MockUserRepository),
+		mockStateRepo:             new(mocks.MockStateRepository),
+		mockSessionRepo:           new(mocks.MockSessionRepository),
+		mockTokenSvc:              new(mocks.MockJWTGenerator),
+		mockVerificationTokenRepo: new(mocks.MockVerificationTokenRepository), // Changed
+		mockEmailSvc:              new(mocks.MockEmailService),
+		cfg:                       cfg,
 	}
 	deps.service = NewSRPAuthService(
 		deps.mockUserRepo,
 		deps.mockStateRepo,
 		deps.mockSessionRepo,
 		deps.mockTokenSvc,
-		deps.mockPasswordResetTokenRepo,
+		deps.mockVerificationTokenRepo,
 		deps.mockEmailSvc,
 		deps.cfg,
 	)

@@ -18,14 +18,14 @@ type JWTService struct {
 
 // SRPAuthService handles the core SRP logic
 type SRPAuthService struct {
-	userRepo               repository.UserRepository
-	stateRepo              repository.StateRepository
-	tokenSvc               JWTGenerator
-	srpGroup               string
-	sessionRepo            repository.SessionRepository
-	cfg                    *config.Config
-	passwordResetTokenRepo repository.PasswordResetTokenRepository
-	emailSvc               EmailService
+	userRepo              repository.UserRepository
+	stateRepo             repository.StateRepository
+	tokenSvc              JWTGenerator
+	srpGroup              string
+	sessionRepo           repository.SessionRepository
+	cfg                   *config.Config
+	emailSvc              EmailService
+	verificationTokenRepo repository.VerificationTokenRepository // Changed
 }
 
 type JWTGenerator interface {
@@ -59,12 +59,16 @@ type SRPAuthGenerator interface {
 	InitiatePasswordChangeVerification(ctx context.Context, authID string) (*models.InitiateChangePasswordResponse, error)
 	// ConfirmPasswordChange verifies the user's current password proof and updates to the new password credentials.
 	ConfirmPasswordChange(ctx context.Context, authID string, req models.ConfirmChangePasswordRequest) error
+	// GenerateCodeAndSendActivationEmail generates an activation code for a new user and sends it via email.
+	GenerateCodeAndSendActivationEmail(ctx context.Context, req models.AuthIDRequest) error
+	ActivateUser(ctx context.Context, req models.ActivateUserRequest) error
 }
 
 // EmailService defines an interface for sending emails.
 type EmailService interface {
 	// SendPasswordResetEmail sends an email with a reset code.
 	SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, resetContextInfo string) error
+	SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error
 }
 
 // OAuthService handles interactions with the OAuth2 provider

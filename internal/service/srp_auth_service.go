@@ -20,6 +20,9 @@ import (
 // ErrSRPAuthenticationFailed indicates a general SRP proof verification failure.
 var ErrSRPAuthenticationFailed = errors.New("SRP authentication failed")
 
+// ErrUserAlreadyActivated indicates that an operation cannot be performed because the user is already active.
+var ErrUserAlreadyActivated = errors.New("user is already activated")
+
 var _ SRPAuthGenerator = (*SRPAuthService)(nil)
 
 // NewSRPAuthService creates a new SRPAuthService
@@ -28,19 +31,19 @@ func NewSRPAuthService(
 	stateRepo repository.StateRepository,
 	sessionRepo repository.SessionRepository,
 	tokenSvc JWTGenerator,
-	passwordResetTokenRepo repository.PasswordResetTokenRepository, // Added
-	emailSvc EmailService, // Added
+	verificationTokenRepo repository.VerificationTokenRepository, // Changed
+	emailSvc EmailService,
 	cfg *config.Config,
 ) *SRPAuthService {
 	return &SRPAuthService{
-		userRepo:               userRepo,
-		stateRepo:              stateRepo,
-		sessionRepo:            sessionRepo,
-		tokenSvc:               tokenSvc,
-		passwordResetTokenRepo: passwordResetTokenRepo, // Initialize
-		emailSvc:               emailSvc,               // Initialize
-		srpGroup:               cfg.SRP.Group,
-		cfg:                    cfg,
+		userRepo:              userRepo,
+		stateRepo:             stateRepo,
+		sessionRepo:           sessionRepo,
+		tokenSvc:              tokenSvc,
+		verificationTokenRepo: verificationTokenRepo, // Changed
+		emailSvc:              emailSvc,
+		srpGroup:              cfg.SRP.Group,
+		cfg:                   cfg,
 	}
 }
 
@@ -103,6 +106,10 @@ func (s *SRPAuthService) ComputeB(ctx context.Context, req models.AuthStep1Reque
 	if err != nil {
 		log.Printf("[AuthService.ComputeB] ERROR: Failed to get credentials for user '%s': %v", req.AuthID, err)
 		return nil, fmt.Errorf("failed to get user credentials: %w", err) // Could be ErrUserNotFound
+	}
+	if userInfo.State == "inactive" {
+		log.Printf("[AuthService.ComputeB] ERROR: User '%s' is inactive", req.AuthID)
+		return nil, fmt.Errorf("user has not been activated %w", repository.ErrUserNotActivated)
 	}
 	saltHex := userInfo.AuthExtras["salt"]
 	verifierHex := userInfo.AuthExtras["verifier"]
@@ -402,7 +409,7 @@ func (s *SRPAuthService) InitiatePasswordReset(ctx context.Context, req models.I
 	// Ensure PasswordResetTokenExpiry is configured, e.g., 15 minutes
 	expiry := time.Now().UTC().Add(s.cfg.Security.PasswordResetTokenExpiry)
 
-	err = s.passwordResetTokenRepo.StoreResetToken(ctx, req.AuthID, resetCode, expiry)
+	err = s.verificationTokenRepo.StorePasswordResetToken(ctx, req.AuthID, resetCode, expiry)
 	if err != nil {
 		log.Printf("[AuthService.InitiatePasswordReset] ERROR: Failed to store password reset code for '%s': %v", req.AuthID, err)
 		return fmt.Errorf("failed to initiate password reset") // Internal error
@@ -428,7 +435,7 @@ func (s *SRPAuthService) ValidatePasswordResetToken(ctx context.Context, req mod
 
 	log.Printf("[AuthService.ValidatePasswordResetToken] Attempting to validate reset token: %s", req.Token)
 
-	authID, err := s.passwordResetTokenRepo.GetAuthIDForValidToken(ctx, req.Token)
+	authID, err := s.verificationTokenRepo.GetAuthIDForValidPasswordResetToken(ctx, req.Token)
 	if err != nil {
 		log.Printf("[AuthService.ValidatePasswordResetToken] Validation failed for token '%s': %v", req.Token, err)
 		return &models.ValidatePasswordResetTokenResponse{IsValid: false}, fmt.Errorf("invalid or expired password reset token: %w", err)
@@ -450,7 +457,7 @@ func (s *SRPAuthService) CompletePasswordReset(ctx context.Context, req models.C
 
 	log.Printf("[AuthService.CompletePasswordReset] Attempting to complete password reset with code: %s", req.Token)
 
-	authID, err := s.passwordResetTokenRepo.ValidateAndConsumeResetToken(ctx, req.Token)
+	authID, err := s.verificationTokenRepo.ValidateAndConsumePasswordResetToken(ctx, req.Token)
 	if err != nil {
 		log.Printf("[AuthService.CompletePasswordReset] ERROR: Invalid, expired, or already consumed reset token '%s': %v", req.Token, err)
 		return fmt.Errorf("invalid, expired, or already consumed password reset token: %w", err)
@@ -473,5 +480,82 @@ func (s *SRPAuthService) CompletePasswordReset(ctx context.Context, req models.C
 	}
 
 	log.Printf("[AuthService.CompletePasswordReset] SUCCESS: Password reset for user '%s'", authID)
+	return nil
+}
+
+// GenerateCodeAndSendActivationEmail generates a 6-digit activation code for a user
+// and sends it via email. It's typically used after registration for users
+// who are in an "inactive" state.
+func (s *SRPAuthService) GenerateCodeAndSendActivationEmail(ctx context.Context, req models.AuthIDRequest) error {
+	if req.AuthID == "" {
+		return errors.New("authID (email) cannot be empty")
+	}
+
+	log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] Attempting for authID '%s'", req.AuthID)
+
+	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, req.AuthID)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] User '%s' not found.", req.AuthID)
+			return err
+		}
+		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] ERROR: Failed to get user info for '%s': %v", req.AuthID, err)
+		return fmt.Errorf("failed to retrieve user information: %w", err)
+	}
+
+	if userInfo.State == "active" {
+		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] User '%s' is already active.", req.AuthID)
+		return ErrUserAlreadyActivated
+	}
+
+	activationCode, err := generateSixDigitCode()
+	if err != nil {
+		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] ERROR: Failed to generate activation code for '%s': %v", req.AuthID, err)
+		return fmt.Errorf("failed to generate activation code: %w", err)
+	}
+
+	// Assuming ActivationTokenExpiry is similar to PasswordResetTokenExpiry or defined in cfg.Security
+	expiry := time.Now().UTC().Add(s.cfg.Security.PasswordResetTokenExpiry)
+
+	if err := s.verificationTokenRepo.StoreActivationToken(ctx, req.AuthID, activationCode, expiry); err != nil {
+		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] ERROR: Failed to store activation code for '%s': %v", req.AuthID, err)
+		return fmt.Errorf("failed to store activation code: %w", err)
+	}
+
+	appName := "Your Application" // Assuming AppName is available in config
+	if err := s.emailSvc.SendActivationEmail(ctx, req.AuthID, activationCode, appName); err != nil {
+		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] ERROR: Failed to send activation email to '%s': %v", req.AuthID, err)
+		return fmt.Errorf("failed to send activation email: %w", err)
+	}
+
+	log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] SUCCESS: Activation code sent for '%s'", req.AuthID)
+	return nil
+}
+
+func (s *SRPAuthService) ActivateUser(ctx context.Context, req models.ActivateUserRequest) error {
+	if req.AuthID == "" || req.Code == "" {
+		return errors.New("authID and activation code cannot be empty")
+	}
+	log.Printf("[AuthService.ActivateAccount] Attempting to activate user '%s' with code: %s", req.AuthID, req.Code)
+
+	authID, err := s.verificationTokenRepo.ValidateAndConsumeActivationToken(ctx, req.Code)
+	if err != nil {
+		log.Printf("[AuthService.ActivateAccount] ERROR: Invalid, expired, or already consumed activation code for '%s': %v", req.AuthID, err)
+		return fmt.Errorf("invalid, expired, or already consumed activation code: %w", err)
+	}
+
+	log.Printf("[AuthService.ActivateAccount] Token validated and consumed for authID '%s'. Activating account.", authID)
+	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
+	if err != nil {
+		log.Printf("[AuthService.ActivateAccount] ERROR: Failed to get user info for '%s': %v", authID, err)
+		return fmt.Errorf("failed to retrieve user information: %w", err)
+	}
+	err = s.userRepo.ActivateUser(ctx, userInfo.ID)
+	if err != nil {
+		log.Printf("[AuthService.ActivateAccount] ERROR: Failed to activate user '%s': %v", authID, err)
+		return fmt.Errorf("failed to activate user: %w", err)
+	}
+
+	log.Printf("[AuthService.ActivateAccount] SUCCESS: Account activated for user '%s'", authID)
 	return nil
 }

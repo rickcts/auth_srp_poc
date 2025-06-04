@@ -80,3 +80,24 @@ func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, 
 	log.Printf("[SMTPEmailService] Password reset email sent to %s", toEmail)
 	return nil
 }
+
+// SendActivationEmail sends an account activation email.
+func (s *SMTPEmailService) SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error {
+	if s.cfg.Host == "" || s.cfg.User == "" {
+		log.Printf("[SMTPEmailService] ERROR: SMTP host or user not configured. Cannot send activation email to %s.", toEmail)
+		return fmt.Errorf("SMTP service not configured")
+	}
+
+	subject := fmt.Sprintf("Activate Your Account for %s", appName)
+	body := fmt.Sprintf("Hello,\n\nThank you for registering with %s.\n\nYour account activation code is: %s\n\nThis code will expire in approximately 15 minutes (or as configured).\n\nPlease use this code to activate your account.\n\nIf you did not request this, please ignore this email.", appName, activationCode)
+	date := time.Now().Format(time.RFC1123Z)
+
+	err := SendToMail(s.cfg.User, s.cfg.Password, s.cfg.Host, subject, date, body, "text", s.cfg.User, []string{toEmail}, nil, nil)
+	if err != nil {
+		log.Printf("[SMTPEmailService] ERROR: Failed to send activation email to %s: %v", toEmail, err)
+		return fmt.Errorf("failed to send activation email: %w", err)
+	}
+
+	log.Printf("[SMTPEmailService] Activation email sent to %s", toEmail)
+	return nil
+}

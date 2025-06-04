@@ -58,3 +58,13 @@ func (m *MockSRPAuthService) ConfirmPasswordChange(ctx context.Context, authID s
 	args := m.Called(ctx, authID, req)
 	return args.Error(0)
 }
+
+func (m *MockSRPAuthService) GenerateCodeAndSendActivationEmail(ctx context.Context, req models.AuthIDRequest) error {
+	args := m.Called(ctx, req)
+	return args.Error(0)
+}
+
+func (m *MockSRPAuthService) ActivateUser(ctx context.Context, req models.ActivateUserRequest) error {
+	args := m.Called(ctx, req)
+	return args.Error(0)
+}

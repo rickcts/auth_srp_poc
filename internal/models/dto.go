@@ -14,6 +14,11 @@ type SRPRegisterRequest struct {
 	Verifier    string `json:"verifier"` // Hex encoded verifier 'v'
 }
 
+type ActivateUserRequest struct {
+	AuthID string `json:"authId"`
+	Code   string `json:"code"`
+}
+
 // AuthIDRequest is the input for the first step of SRP auth
 type AuthIDRequest struct {
 	AuthID string `json:"authId"`
@@ -65,6 +70,13 @@ type MobileLoginRequest struct {
 // InitiatePasswordResetRequest is the input for starting the password reset process.
 type InitiatePasswordResetRequest struct {
 	AuthID string `json:"authId"` // Typically the user's email
+}
+
+// InitiatePasswordResetResponse contains the details for a password reset.
+type InitiatePasswordResetResponse struct {
+	AuthID    string    `json:"authId"`
+	ResetCode string    `json:"resetCode"`
+	Expiry    time.Time `json:"expiry"`
 }
 
 // CompletePasswordResetRequest is the input for completing the password reset process.

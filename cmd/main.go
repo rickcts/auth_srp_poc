@@ -30,10 +30,9 @@ func main() {
 	}
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisSettings.Address,
-		Password: cfg.RedisSettings.Password,
-		DB:       cfg.RedisSettings.DB,
+		Addr: cfg.RedisSettings.Address,
 	})
+
 	entClient, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseSettings)
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
@@ -46,7 +45,7 @@ func main() {
 
 	sessionRepo := redis_repo.NewRedisSessionRepository(redisClient)
 	userRepo := ent_repo.NewEntUserRepository(entClient)
-	passwordResetCodeRepo := redis_repo.NewRedisPasswordResetTokenRepository(redisClient)
+	verificationTokenRepo := redis_repo.NewRedisVerificationTokenRepository(redisClient)
 	stateRepo := memory.NewMemoryStateRepository()
 
 	tokenService := service.NewTokenService(cfg.JWTSecret)
@@ -60,7 +59,7 @@ func main() {
 			stateRepo,
 			sessionRepo,
 			tokenService,
-			passwordResetCodeRepo,
+			verificationTokenRepo,
 			emailService,
 			cfg,
 		),

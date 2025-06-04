@@ -48,16 +48,60 @@ func (h *SRPAuthHandler) Register(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	err := h.SRPAuthService.Register(ctx, *req)
+	err := h.SRPAuthService.Register(ctx, *req) // Modified
 	if err != nil {
-		if errors.Is(err, repository.ErrUserExists) {
+		if errors.Is(err, repository.ErrUserExists) { // Or check for the new error from service if you changed it
 			return echo.NewHTTPError(http.StatusConflict, "Username already exists")
 		}
 		// Log the internal error details here in a real app
 		return echo.NewHTTPError(http.StatusInternalServerError, "Registration failed")
 	}
 
-	return c.NoContent(http.StatusCreated)
+	return c.NoContent(http.StatusCreated) // Modified
+}
+
+func (h *SRPAuthHandler) GenerateCodeAndSendActivationEmail(c echo.Context) error {
+	req := new(models.AuthIDRequest)
+	if err := c.Bind(req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	if req.AuthID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "AuthID (email) is required")
+	}
+
+	ctx := c.Request().Context()
+	err := h.SRPAuthService.GenerateCodeAndSendActivationEmail(ctx, *req)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "User not found")
+		}
+		if errors.Is(err, service.ErrUserAlreadyActivated) { // Assuming you have/will define this error in your service layer
+			return echo.NewHTTPError(http.StatusConflict, "User is already activated")
+		}
+		// Log internal error details
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send activation email")
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"message": "Activation email sent successfully. Please check your inbox."})
+}
+
+func (h *SRPAuthHandler) ActivateAccount(c echo.Context) error {
+	req := new(models.ActivateUserRequest)
+	if err := c.Bind(req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	ctx := c.Request().Context()
+	err := h.SRPAuthService.ActivateUser(ctx, *req)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "User not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to activate user")
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"message": "User activated successfully"})
 }
 
 // AuthStep1 handles the first step of the SRP authentication flow
@@ -74,6 +118,11 @@ func (h *SRPAuthHandler) AuthStep1(c echo.Context) error {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "User not found")
 		}
+
+		if errors.Is(err, repository.ErrUserNotActivated) {
+			return echo.NewHTTPError(http.StatusForbidden, "User has not been activated")
+		}
+
 		// Log internal error details
 		return echo.NewHTTPError(http.StatusInternalServerError, "Authentication initiation failed")
 	}

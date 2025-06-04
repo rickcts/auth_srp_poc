@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/stretchr/testify/mock"
@@ -33,5 +34,10 @@ func (m *MockUserRepository) ActivateUser(ctx context.Context, userId int64) err
 
 func (m *MockUserRepository) UpdateUserSRPAuth(ctx context.Context, authId string, newSaltHex string, newVerifierHex string) error {
 	args := m.Called(ctx, authId, newSaltHex, newVerifierHex)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) UpdateActivationCode(ctx context.Context, authID string, code string, expiry time.Time) error {
+	args := m.Called(ctx, authID, code, expiry)
 	return args.Error(0)
 }
