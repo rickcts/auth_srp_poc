@@ -1,12 +1,13 @@
 package handlers_test
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/goccy/go-json"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/mocks"

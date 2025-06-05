@@ -4,29 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
-	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
-
-// JWTService handles JWT generation
-type JWTService struct {
-	jwtSecret []byte
-}
-
-// SRPAuthService handles the core SRP logic
-type SRPAuthService struct {
-	userRepo              repository.UserRepository
-	stateRepo             repository.StateRepository
-	tokenSvc              JWTGenerator
-	srpGroup              string
-	sessionRepo           repository.SessionRepository
-	cfg                   *config.Config
-	emailSvc              EmailService
-	verificationTokenRepo repository.VerificationTokenRepository // Changed
-}
 
 type JWTGenerator interface {
 	GenerateToken(authID string) (token string, expiry time.Time, err error)
@@ -36,6 +17,7 @@ type SessionGenerator interface {
 	// VerifySessionToken check if the token is stored in the session store
 	VerifySessionToken(ctx context.Context, sessionTokenID string) (*models.VerifyTokenResponse, error)
 	ExtendUserSession(ctx context.Context, currentSessionToken string) (*models.ExtendedSessionResponse, error)
+	GetUserSessions(ctx context.Context, sessionTokenID string) (*models.GetUserSessionsResponse, error)
 	SignOut(ctx context.Context, sessionToken string) error
 	SignOutUserSessions(ctx context.Context, authID string, currentSessionTokenToExclude ...string) (int64, error)
 }
@@ -69,14 +51,6 @@ type EmailService interface {
 	// SendPasswordResetEmail sends an email with a reset code.
 	SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, resetContextInfo string) error
 	SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error
-}
-
-// OAuthService handles interactions with the OAuth2 provider
-type OAuthService struct {
-	userRepo    repository.UserRepository
-	cfg         *config.Config
-	oAuthConfig *oauth2.Config
-	api         string
 }
 
 type OAuthProvider interface {

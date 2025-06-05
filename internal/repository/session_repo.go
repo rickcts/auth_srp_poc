@@ -18,6 +18,7 @@ type SessionRepository interface {
 	// GetSession retrieves a session by its ID.
 	// It should return ErrSessionNotFound if the session doesn't exist or is expired.
 	GetSession(ctx context.Context, sessionID string) (*models.Session, error)
+	GetSessions(ctx context.Context, userID int64) ([]*models.Session, error)
 	// DeleteSession removes a session, effectively logging the user out.
 	DeleteSession(ctx context.Context, sessionID string) error
 	// ExtendSession updates the expiry time of an existing session (for sliding sessions).

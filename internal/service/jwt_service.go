@@ -7,6 +7,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// JWTService handles JWT generation
+type JWTService struct {
+	jwtSecret []byte
+}
+
 var _ JWTGenerator = (*JWTService)(nil)
 
 // NewTokenService creates a TokenService

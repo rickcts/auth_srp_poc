@@ -26,6 +26,13 @@ func (m *MockSessionRepository) GetSession(ctx context.Context, sessionId string
 	return session, args.Error(1)
 }
 
+// GetSessions provides a mock function for retrieving all sessions for a user.
+func (m *MockSessionRepository) GetSessions(ctx context.Context, userID int64) ([]*models.Session, error) {
+	args := m.Called(ctx, userID)
+	sessions, _ := args.Get(0).([]*models.Session) // Handle nil case
+	return sessions, args.Error(1)
+}
+
 // DeleteSession provides a mock function for deleting a session.
 func (m *MockSessionRepository) DeleteSession(ctx context.Context, sessionId string) error {
 	args := m.Called(ctx, sessionId)

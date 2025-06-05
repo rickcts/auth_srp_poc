@@ -110,6 +110,32 @@ func (r *MemorySessionRepository) GetSession(ctx context.Context, SessionID stri
 	return &session, nil
 }
 
+// GetSessions retrieves all sessions for a given user ID.
+func (r *MemorySessionRepository) GetSessions(ctx context.Context, userID int64) ([]*models.Session, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	SessionIDs, exists := r.userSessions[userID]
+	if !exists || len(SessionIDs) == 0 {
+		return []*models.Session{}, nil
+	}
+
+	var sessions []*models.Session
+	// Iterate over the session IDs for this user
+	for SessionID := range SessionIDs {
+		// Retrieve the actual session data
+		session, exists := r.sessions[SessionID]
+		if exists && !session.IsExpired() {
+			sessions = append(sessions, &session)
+		} else {
+			// If session doesn't exist or is expired, it should be cleaned up later.
+			// For now, we just don't include it in the result.
+		}
+	}
+
+	return sessions, nil
+}
+
 // DeleteSession removes a session.
 func (r *MemorySessionRepository) DeleteSession(ctx context.Context, SessionID string) error {
 	r.mutex.Lock()

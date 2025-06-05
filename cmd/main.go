@@ -29,9 +29,13 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: cfg.RedisSettings.Address,
-	})
+	redisOpts, err := redis.ParseURL(cfg.RedisSettings.Address)
+	if err != nil {
+		log.Fatalf("Failed to parse Redis URL '%s': %v", cfg.RedisSettings.Address, err)
+	}
+	// Add any other Redis options from your config if needed, e.g., Password, DB
+	// redisOpts.Password = cfg.RedisSettings.Password
+	redisClient := redis.NewClient(redisOpts)
 
 	entClient, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseSettings)
 	if err != nil {
@@ -50,9 +54,11 @@ func main() {
 
 	tokenService := service.NewTokenService(cfg.JWTSecret)
 	emailService := service.NewSMTPEmailService(&cfg.SMTP)
+	sessionService := service.NewSessionService(sessionRepo, userRepo, tokenService)
 
 	app := server.New()
 
+	router.SetupUserRoutes(app, handlers.NewJWTAuthHandler(tokenService, sessionService), cfg)
 	router.SetupSRPRoutes(app, handlers.NewSRPAuthHandler(
 		service.NewSRPAuthService(
 			userRepo,

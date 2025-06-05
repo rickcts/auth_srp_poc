@@ -26,40 +26,30 @@ const (
 	sessionNotFoundErrMsg = "session not found or expired"
 )
 
-// sessionServiceTestDeps holds common dependencies for SRPAuthService's session method tests
+// sessionServiceTestDeps holds common dependencies for SessionService tests
 type sessionServiceTestDeps struct {
-	mockUserRepo              *mocks.MockUserRepository
-	mockStateRepo             *mocks.MockStateRepository // Assuming StateRepository mock is correct
-	mockSessionRepo           *mocks.MockSessionRepository
-	mockTokenSvc              *mocks.MockJWTGenerator                // Renamed from MockTokenService for clarity
-	mockVerificationTokenRepo *mocks.MockVerificationTokenRepository // Changed to VerificationTokenRepository
-	mockEmailSvc              *mocks.MockEmailService                // Assuming EmailService mock is correct
-	cfg                       *config.Config
-	service                   SessionGenerator // Use the interface for session methods
+	mockUserRepo    *mocks.MockUserRepository
+	mockSessionRepo *mocks.MockSessionRepository
+	mockTokenSvc    *mocks.MockJWTGenerator
+	cfg             *config.Config
+	service         SessionGenerator
 }
 
 // setupSessionServiceTest initializes mocks and the service for testing session methods.
 func setupSessionServiceTest(t *testing.T) sessionServiceTestDeps {
 	t.Helper()
-	cfg := mocks.CreateTestConfigForSessionTests()
+	cfg := mocks.CreateTestConfigForSessionTests() // Keep cfg if mocks might use it, though SessionService itself doesn't.
 
 	deps := sessionServiceTestDeps{
-		mockUserRepo:              new(mocks.MockUserRepository),
-		mockStateRepo:             new(mocks.MockStateRepository),
-		mockSessionRepo:           new(mocks.MockSessionRepository),
-		mockTokenSvc:              new(mocks.MockJWTGenerator),
-		mockVerificationTokenRepo: new(mocks.MockVerificationTokenRepository), // Changed
-		mockEmailSvc:              new(mocks.MockEmailService),
-		cfg:                       cfg,
+		mockUserRepo:    new(mocks.MockUserRepository),
+		mockSessionRepo: new(mocks.MockSessionRepository),
+		mockTokenSvc:    new(mocks.MockJWTGenerator),
+		cfg:             cfg,
 	}
-	deps.service = NewSRPAuthService(
-		deps.mockUserRepo,
-		deps.mockStateRepo,
+	deps.service = NewSessionService(
 		deps.mockSessionRepo,
+		deps.mockUserRepo,
 		deps.mockTokenSvc,
-		deps.mockVerificationTokenRepo,
-		deps.mockEmailSvc,
-		deps.cfg,
 	)
 	return deps
 }
@@ -67,7 +57,7 @@ func setupSessionServiceTest(t *testing.T) sessionServiceTestDeps {
 func TestSRPAuthService_SignOut(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success_SignOut", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deps.mockSessionRepo.On("DeleteSession", ctx, testSessionToken).Return(nil).Once()
 
@@ -76,7 +66,7 @@ func TestSRPAuthService_SignOut(t *testing.T) {
 		deps.mockSessionRepo.AssertExpectations(t)
 	})
 
-	t.Run("SuccessWhenSessionNotFound", func(t *testing.T) {
+	t.Run("SuccessWhenSessionNotFound_SignOut", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deps.mockSessionRepo.On("DeleteSession", ctx, testSessionToken).Return(repository.ErrSessionNotFound).Once()
 
@@ -85,7 +75,7 @@ func TestSRPAuthService_SignOut(t *testing.T) {
 		deps.mockSessionRepo.AssertExpectations(t)
 	})
 
-	t.Run("ErrorEmptyToken", func(t *testing.T) {
+	t.Run("ErrorEmptyToken_SignOut", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		err := deps.service.SignOut(ctx, "")
 		require.Error(t, err)
@@ -93,7 +83,7 @@ func TestSRPAuthService_SignOut(t *testing.T) {
 		deps.mockSessionRepo.AssertNotCalled(t, "DeleteSession", mock.Anything, mock.Anything)
 	})
 
-	t.Run("ErrorRepoFailure", func(t *testing.T) {
+	t.Run("ErrorRepoFailure_SignOut", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		repoErr := errors.New(genericErrMsg)
 		deps.mockSessionRepo.On("DeleteSession", ctx, testSessionToken).Return(repoErr).Once()
@@ -106,7 +96,7 @@ func TestSRPAuthService_SignOut(t *testing.T) {
 	})
 }
 
-func TestSRPAuthService_ExtendUserSession(t *testing.T) {
+func TestSessionService_ExtendUserSession(t *testing.T) {
 	ctx := context.Background()
 	validExpiry := time.Now().Add(1 * time.Hour)
 	newExpiry := time.Now().Add(2 * time.Hour)
@@ -118,7 +108,7 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 		Expiry:    validExpiry,
 	}
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(currentValidSession, nil).Once()
 		deps.mockSessionRepo.On("DeleteSession", ctx, testSessionToken).Return(nil).Once()
@@ -141,14 +131,14 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 		deps.mockTokenSvc.AssertExpectations(t)
 	})
 
-	t.Run("ErrorEmptyToken", func(t *testing.T) {
+	t.Run("ErrorEmptyToken_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		_, err := deps.service.ExtendUserSession(ctx, "")
 		require.Error(t, err)
 		assert.EqualError(t, err, "current session token cannot be empty")
 	})
 
-	t.Run("ErrorGetSessionNotFound", func(t *testing.T) {
+	t.Run("ErrorGetSessionNotFound_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(nil, repository.ErrSessionNotFound).Once()
 
@@ -158,7 +148,7 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 		assert.Contains(t, err.Error(), "session not found or expired, cannot extend")
 	})
 
-	t.Run("ErrorSessionExpired", func(t *testing.T) {
+	t.Run("ErrorSessionExpired_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		expiredSession := &models.Session{
 			SessionID: testSessionToken,
@@ -174,7 +164,7 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 		assert.ErrorIs(t, err, repository.ErrSessionNotFound) // Returns ErrSessionNotFound for expired
 	})
 
-	t.Run("ErrorGenerateTokenFails", func(t *testing.T) {
+	t.Run("ErrorGenerateTokenFails_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		genErr := errors.New("token generation failed")
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(currentValidSession, nil).Once()
@@ -187,7 +177,7 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to generate new session token")
 	})
 
-	t.Run("ErrorStoreNewSessionFails", func(t *testing.T) {
+	t.Run("ErrorStoreNewSessionFails_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		storeErr := errors.New("db store failed")
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(currentValidSession, nil).Once()
@@ -201,7 +191,7 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to store new session")
 	})
 
-	t.Run("WarnDeleteOldSessionFailsButContinuesSuccessfully", func(t *testing.T) {
+	t.Run("WarnDeleteOldSessionFailsButContinuesSuccessfully_ExtendUserSession", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deleteErr := errors.New("failed to delete old session but not critical")
 
@@ -222,7 +212,7 @@ func TestSRPAuthService_ExtendUserSession(t *testing.T) {
 	})
 }
 
-func TestSRPAuthService_VerifySessionToken(t *testing.T) {
+func TestSessionService_VerifySessionToken(t *testing.T) {
 	ctx := context.Background()
 	validExpiry := time.Now().Add(1 * time.Hour)
 	sessionFromRepo := &models.Session{
@@ -231,7 +221,7 @@ func TestSRPAuthService_VerifySessionToken(t *testing.T) {
 		Expiry:    validExpiry,
 	}
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success_VerifySessionToken", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(sessionFromRepo, nil).Once()
 
@@ -244,14 +234,14 @@ func TestSRPAuthService_VerifySessionToken(t *testing.T) {
 		deps.mockSessionRepo.AssertExpectations(t)
 	})
 
-	t.Run("ErrorEmptyToken", func(t *testing.T) {
+	t.Run("ErrorEmptyToken_VerifySessionToken", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		_, err := deps.service.VerifySessionToken(ctx, "")
 		require.Error(t, err)
 		assert.EqualError(t, err, "session token cannot be empty")
 	})
 
-	t.Run("ErrorSessionNotFoundInRepo", func(t *testing.T) {
+	t.Run("ErrorSessionNotFoundInRepo_VerifySessionToken", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(nil, repository.ErrSessionNotFound).Once()
 
@@ -261,7 +251,7 @@ func TestSRPAuthService_VerifySessionToken(t *testing.T) {
 		assert.Contains(t, err.Error(), "session not found or invalIDated")
 	})
 
-	t.Run("ErrorRepoFailure", func(t *testing.T) {
+	t.Run("ErrorRepoFailure_VerifySessionToken", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		repoErr := errors.New(genericErrMsg)
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(nil, repoErr).Once()
@@ -272,7 +262,7 @@ func TestSRPAuthService_VerifySessionToken(t *testing.T) {
 		assert.Contains(t, err.Error(), "error verifying session")
 	})
 
-	t.Run("ErrorSessionExpired", func(t *testing.T) {
+	t.Run("ErrorSessionExpired_VerifySessionToken", func(t *testing.T) {
 		deps := setupSessionServiceTest(t)
 		expiredSession := &models.Session{
 			SessionID: testSessionToken,
@@ -286,6 +276,82 @@ func TestSRPAuthService_VerifySessionToken(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repository.ErrSessionNotFound) // Specific error for expired
 		assert.Contains(t, err.Error(), "session expired")
+		deps.mockSessionRepo.AssertExpectations(t)
+	})
+}
+
+func TestSessionService_SignOutUserSessions(t *testing.T) {
+	ctx := context.Background()
+	tokenToExclude := "exclude-this-token"
+
+	userInfo := &models.UserInfo{
+		ID:     testUserIDSession,
+		AuthID: testAuthIDSession,
+	}
+
+	t.Run("Success_SignOutUserSessions_WithExclusion", func(t *testing.T) {
+		deps := setupSessionServiceTest(t)
+		expectedDeletedCount := int64(5)
+
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, testAuthIDSession).Return(userInfo, nil).Once()
+		deps.mockSessionRepo.On("DeleteUserSessions", ctx, testUserIDSession, tokenToExclude).Return(expectedDeletedCount, nil).Once()
+
+		deletedCount, err := deps.service.SignOutUserSessions(ctx, testAuthIDSession, tokenToExclude)
+		require.NoError(t, err)
+		assert.Equal(t, expectedDeletedCount, deletedCount)
+		deps.mockUserRepo.AssertExpectations(t)
+		deps.mockSessionRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_SignOutUserSessions_WithoutExclusion", func(t *testing.T) {
+		deps := setupSessionServiceTest(t)
+		expectedDeletedCount := int64(3)
+
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, testAuthIDSession).Return(userInfo, nil).Once()
+		deps.mockSessionRepo.On("DeleteUserSessions", ctx, testUserIDSession).Return(expectedDeletedCount, nil).Once() // No token to exclude
+
+		deletedCount, err := deps.service.SignOutUserSessions(ctx, testAuthIDSession)
+		require.NoError(t, err)
+		assert.Equal(t, expectedDeletedCount, deletedCount)
+		deps.mockUserRepo.AssertExpectations(t)
+		deps.mockSessionRepo.AssertExpectations(t)
+	})
+
+	t.Run("ErrorEmptyAuthID_SignOutUserSessions", func(t *testing.T) {
+		deps := setupSessionServiceTest(t)
+		_, err := deps.service.SignOutUserSessions(ctx, "")
+		require.Error(t, err)
+		assert.EqualError(t, err, "userID cannot be empty") // The service currently says "userID" but it means authID
+		deps.mockUserRepo.AssertNotCalled(t, "GetUserInfoByAuthID", mock.Anything, mock.Anything)
+		deps.mockSessionRepo.AssertNotCalled(t, "DeleteUserSessions", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("ErrorGetUserInfoFails_SignOutUserSessions", func(t *testing.T) {
+		deps := setupSessionServiceTest(t)
+		repoErr := errors.New("failed to get user")
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, testAuthIDSession).Return(nil, repoErr).Once()
+
+		_, err := deps.service.SignOutUserSessions(ctx, testAuthIDSession, tokenToExclude)
+		require.Error(t, err)
+		// This assertion depends on the SignOutUserSessions method correctly handling and returning this error.
+		// Assuming it's fixed to: return 0, fmt.Errorf("failed to get user info: %w", err)
+		assert.ErrorIs(t, err, repoErr)
+		assert.Contains(t, err.Error(), "failed to get user info")
+		deps.mockUserRepo.AssertExpectations(t)
+		deps.mockSessionRepo.AssertNotCalled(t, "DeleteUserSessions", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("ErrorDeleteUserSessionsFails_SignOutUserSessions", func(t *testing.T) {
+		deps := setupSessionServiceTest(t)
+		repoErr := errors.New("failed to delete sessions")
+		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, testAuthIDSession).Return(userInfo, nil).Once()
+		deps.mockSessionRepo.On("DeleteUserSessions", ctx, testUserIDSession, tokenToExclude).Return(int64(0), repoErr).Once()
+
+		_, err := deps.service.SignOutUserSessions(ctx, testAuthIDSession, tokenToExclude)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, repoErr)
+		assert.Contains(t, err.Error(), "failed to sign out user sessions")
+		deps.mockUserRepo.AssertExpectations(t)
 		deps.mockSessionRepo.AssertExpectations(t)
 	})
 }

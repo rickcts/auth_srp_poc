@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,12 +9,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/goccy/go-json"
+
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
+
+// OAuthService handles interactions with the OAuth2 provider
+type OAuthService struct {
+	userRepo    repository.UserRepository
+	cfg         *config.Config
+	oAuthConfig *oauth2.Config
+	api         string
+}
 
 // NewMSOAuthService creates a new instance of OAuthService
 func NewMSOAuthService(cfg *config.Config, userRepo repository.UserRepository) *OAuthService {

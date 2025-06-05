@@ -19,6 +19,10 @@ func (s *Session) IsExpired() bool {
 	return time.Now().UTC().After(s.Expiry)
 }
 
+type GetUserSessionsResponse struct {
+	Sessions []*Session `json:"sessions"`
+}
+
 type ExtendedSessionResponse struct {
 	NewSessionToken string    `json:"newSessionToken"`
 	NewExpiry       time.Time `json:"newExpiry"`

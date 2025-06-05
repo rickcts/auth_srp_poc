@@ -56,6 +56,7 @@ type SmtpConfig struct {
 	Port     string `mapstructure:"SMTP_PORT"`
 	User     string `mapstructure:"SMTP_USER"`
 	Password string `mapstructure:"SMTP_PASSWORD"`
+	NOTLS    bool   `mapstructure:"SMTP_NOTLS"`
 }
 
 type Config struct {
@@ -104,6 +105,9 @@ func LoadConfig() (*Config, error) {
 	}
 
 	expirySeconds := viper.GetInt("SRP_AUTH_STATE_EXPIRY_SECONDS")
+	if expirySeconds <= 0 {
+		expirySeconds = 300
+	}
 	srpAuthStateExpiry := time.Now().Add(time.Duration(expirySeconds) * time.Second)
 
 	hashingAlgorithmStr := viper.GetString("HASHING_ALGORITHM")
@@ -163,6 +167,13 @@ func LoadConfig() (*Config, error) {
 			Address:  viper.GetString("REDIS_ADDRESS"),
 			Password: viper.GetString("REDIS_PASSWORD"),
 			DB:       viper.GetInt("REDIS_DB"),
+		},
+		SMTP: SmtpConfig{
+			Host:     viper.GetString("SMTP_HOST"),
+			Port:     viper.GetString("SMTP_PORT"),
+			User:     viper.GetString("SMTP_USER"),
+			Password: viper.GetString("SMTP_PASSWORD"),
+			NOTLS:    viper.GetBool("SMTP_NOTLS"),
 		},
 	}, nil
 }

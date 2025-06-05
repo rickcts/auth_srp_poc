@@ -19,7 +19,11 @@ func (m *MockUserRepository) CreateUser(ctx context.Context, authId, displayName
 
 func (m *MockUserRepository) GetUserInfoByAuthID(ctx context.Context, authId string) (userInfo *models.UserInfo, err error) {
 	args := m.Called(ctx, authId)
-	return args.Get(0).(*models.UserInfo), args.Error(1)
+	val := args.Get(0)
+	if val != nil {
+		userInfo = val.(*models.UserInfo)
+	}
+	return userInfo, args.Error(1)
 }
 
 func (m *MockUserRepository) CheckIfUserExists(ctx context.Context, authId string) (bool, error) {

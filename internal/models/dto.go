@@ -40,9 +40,9 @@ type AuthStep1Response struct {
 
 // AuthStep2Request is the client's response (proof) in step 2
 type AuthStep2Request struct {
-	ClientA       string `json:"A"` // Hex encoded client public value A
+	ClientA       string `json:"clientA"` // Hex encoded client public value A
 	AuthID        string `json:"authId"`
-	ClientProofM1 string `json:"M1"` // Hex encoded client proof M1
+	ClientProofM1 string `json:"clientProofM1"` // Hex encoded client proof M1
 }
 
 // AuthStep3Response is the server's final response (proof and token)

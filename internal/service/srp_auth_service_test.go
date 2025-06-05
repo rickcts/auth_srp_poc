@@ -28,7 +28,7 @@ const (
 )
 
 // Helper to generate valID SRP credentials for testing
-func generateTestCreds(authID, password string, cfg *config.Config) (saltHex, verifierHex string, err error) {
+func generateTestCreds(password string, cfg *config.Config) (saltHex, verifierHex string, err error) {
 	srpInstance, err := srp.NewSRP(cfg.SRP.Group, cfg.SRP.HashingAlgorithm.New, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create SRP instance: %w", err)
@@ -189,7 +189,7 @@ func TestAuthService_ComputeB(t *testing.T) {
 	ctx := context.Background()
 	deps := setupSRPAuthServiceTest(t) // Setup once for all subtests in ComputeB
 
-	saltHex, verifierHex, err := generateTestCreds(testAuthID, testPassword, deps.cfg)
+	saltHex, verifierHex, err := generateTestCreds(testPassword, deps.cfg)
 	require.NoError(t, err, "Failed to generate test creds")
 
 	req := models.AuthStep1Request{AuthID: testAuthID}
@@ -326,7 +326,7 @@ func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 	cfg := mocks.CreateTestConfigForSessionTests()
 
 	// 1. Generate real Salt, Verifier
-	saltHex, verifierHex, err := generateTestCreds(testAuthID, testPassword, cfg)
+	saltHex, verifierHex, err := generateTestCreds(testPassword, cfg)
 	require.NoError(t, err, "Setup: Failed to generate test creds")
 	saltBytes, err := hex.DecodeString(saltHex)
 	require.NoError(t, err, "Setup: Failed to decode salt hex")

@@ -55,6 +55,35 @@ func (h *JWTAuthHandler) VerifyToken(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+func (h *JWTAuthHandler) GetUserSessions(c echo.Context) error {
+	userContext := c.Get("user")
+	if userContext == nil {
+		// This case should ideally be caught by middleware, returning 401.
+		// If it reaches here, it's an unexpected state.
+		return echo.NewHTTPError(http.StatusUnauthorized, "User not authenticated: context missing user information")
+	}
+
+	user, ok := userContext.(*jwt.Token)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error: user context type mismatch")
+	}
+
+	authID, err := user.Claims.GetSubject()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: cannot get subject")
+	} else if authID == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: subject claim is missing or empty")
+	}
+
+	resp, err := h.SessionService.GetUserSessions(c.Request().Context(), authID)
+	if err != nil {
+		log.Printf("[JWTAuthHandler.GetUserSessions] Failed to get user sessions: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get user sessions")
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 // Logout current session by delete sessionID in the session store
 func (h *JWTAuthHandler) Logout(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
@@ -107,11 +136,11 @@ func (h *JWTAuthHandler) LogoutAllSessions(c echo.Context) error {
 	}
 
 	authHeader := c.Request().Header.Get("Authorization") // This header is for the *current* session token to exclude.
-	var sessionTokenID string
+	var currentSessionTokenID string
 	if authHeader != "" {
 		parts := strings.Split(authHeader, " ")
 		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
-			sessionTokenID = parts[1]
+			currentSessionTokenID = parts[1]
 		} else {
 			// Invalid format, but we can proceed without an exclusion token.
 			// Or, you could return an error if a valid Bearer token for exclusion is strictly required.
@@ -119,10 +148,21 @@ func (h *JWTAuthHandler) LogoutAllSessions(c echo.Context) error {
 			log.Printf("[JWTAuthHandler.LogoutAllDevices] Warning: Authorization header present but format is not 'Bearer {token}'. Proceeding without excluding current token.")
 		}
 	}
+	ctx := c.Request().Context()
+	resp, err := h.SessionService.VerifySessionToken(ctx, currentSessionTokenID)
+	if err != nil {
+		log.Printf("[JWTAuthHandler.VerifyToken] Session verification failed for token %.10s...: %v", currentSessionTokenID, err)
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired session token")
+	}
+
+	if !resp.IsValid {
+		log.Printf("[JWTAuthHandler.VerifyToken] Session token %.10s... is explicitly marked as invalid.", currentSessionTokenID)
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid session token")
+	}
 
 	var excludeTokens []string
-	if sessionTokenID != "" {
-		excludeTokens = append(excludeTokens, sessionTokenID)
+	if currentSessionTokenID != "" {
+		excludeTokens = append(excludeTokens, currentSessionTokenID)
 	}
 
 	deletedCount, err := h.SessionService.SignOutUserSessions(c.Request().Context(), authID, excludeTokens...)

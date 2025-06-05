@@ -23,6 +23,18 @@ var ErrSRPAuthenticationFailed = errors.New("SRP authentication failed")
 // ErrUserAlreadyActivated indicates that an operation cannot be performed because the user is already active.
 var ErrUserAlreadyActivated = errors.New("user is already activated")
 
+// SRPAuthService handles the core SRP logic
+type SRPAuthService struct {
+	userRepo              repository.UserRepository
+	stateRepo             repository.StateRepository
+	tokenSvc              JWTGenerator
+	srpGroup              string
+	sessionRepo           repository.SessionRepository
+	cfg                   *config.Config
+	emailSvc              EmailService
+	verificationTokenRepo repository.VerificationTokenRepository // Changed
+}
+
 var _ SRPAuthGenerator = (*SRPAuthService)(nil)
 
 // NewSRPAuthService creates a new SRPAuthService
@@ -79,7 +91,7 @@ func (s *SRPAuthService) Register(ctx context.Context, req models.SRPRegisterReq
 	}
 	if isUserExists {
 		log.Printf("[AuthService.Register] ERROR: User '%s' already exists", req.AuthID)
-		return fmt.Errorf("user already exists")
+		return fmt.Errorf("user already exists %w", repository.ErrUserExists)
 	}
 
 	log.Printf("[AuthService.Register] Attempting to register user '%s' with Salt: %s, Verifier: %s", req.AuthID, req.Salt, req.Verifier)
@@ -164,7 +176,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	session, err := s.stateRepo.GetAuthState(req.AuthID)
 	if err != nil {
 		log.Printf("[AuthService.VerifyClientProof] ERROR: Failed to retrieve auth state for user '%s': %v", req.AuthID, err)
-		s.stateRepo.DeleteAuthState(req.AuthID)                                    // Uncomment if needed
+		// s.stateRepo.DeleteAuthState(req.AuthID)                                    // Uncomment if needed
 		return nil, fmt.Errorf("failed to retrieve authentication state: %w", err) // Don't leak internal state details
 	}
 
@@ -514,8 +526,11 @@ func (s *SRPAuthService) GenerateCodeAndSendActivationEmail(ctx context.Context,
 		return fmt.Errorf("failed to generate activation code: %w", err)
 	}
 
-	// Assuming ActivationTokenExpiry is similar to PasswordResetTokenExpiry or defined in cfg.Security
-	expiry := time.Now().UTC().Add(s.cfg.Security.PasswordResetTokenExpiry)
+	activationExpiry := s.cfg.Security.PasswordResetTokenExpiry
+	if activationExpiry == 0 {
+		activationExpiry = 15 * time.Minute // Default to 15 minutes if not configured
+	}
+	expiry := time.Now().UTC().Add(activationExpiry)
 
 	if err := s.verificationTokenRepo.StoreActivationToken(ctx, req.AuthID, activationCode, expiry); err != nil {
 		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] ERROR: Failed to store activation code for '%s': %v", req.AuthID, err)

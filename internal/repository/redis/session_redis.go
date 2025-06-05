@@ -2,10 +2,11 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
@@ -98,6 +99,86 @@ func (r *RedisSessionRepository) GetSession(ctx context.Context, SessionID strin
 	}
 
 	return &session, nil
+}
+
+func (r *RedisSessionRepository) GetSessions(ctx context.Context, userID int64) ([]*models.Session, error) {
+	userKey := makeUserSessionsKey(userID)
+
+	// Get all session IDs for the user.
+	sessionIDs, err := r.client.SMembers(ctx, userKey).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user session IDs with SMEMBERS: %w", err)
+	}
+
+	if len(sessionIDs) == 0 {
+		return []*models.Session{}, nil
+	}
+
+	// Fetch all session data in a single MGET call.
+	sessionKeys := make([]string, len(sessionIDs))
+	for i, id := range sessionIDs {
+		sessionKeys[i] = makeSessionKey(id)
+	}
+
+	jsonDatas, err := r.client.MGet(ctx, sessionKeys...).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis MGET failed for sessions: %w", err)
+	}
+
+	var sessions []*models.Session
+	var sessionIDsToRemove []string // Collect IDs of expired/invalid sessions found during MGET
+
+	pipe := r.client.TxPipeline() // Use a pipeline for cleanup
+
+	for i, data := range jsonDatas {
+		if data == nil {
+			// Session key was deleted between SMEMBERS and MGET, or never existed.
+			// Remove from the user's set.
+			sessionIDsToRemove = append(sessionIDsToRemove, sessionIDs[i])
+			continue
+		}
+
+		jsonData, ok := data.(string)
+		if !ok {
+			// Data is not a string (unexpected type), remove from the user's set and delete key.
+			sessionIDsToRemove = append(sessionIDsToRemove, sessionIDs[i])
+			pipe.Del(ctx, sessionKeys[i])
+			continue
+		}
+
+		var session models.Session
+		if err := json.Unmarshal([]byte(jsonData), &session); err != nil {
+			// Failed to unmarshal, remove from the user's set and delete key.
+			sessionIDsToRemove = append(sessionIDsToRemove, sessionIDs[i])
+			pipe.Del(ctx, sessionKeys[i])
+			continue
+		}
+
+		if session.IsExpired() {
+			// Session is expired, remove from the user's set and delete key
+			sessionIDsToRemove = append(sessionIDsToRemove, sessionIDs[i])
+			pipe.Del(ctx, sessionKeys[i]) // sessionKeys[i] is makeSessionKey(sessionIDs[i])
+			continue
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	// If there are any sessions to remove from the user's set (due to being nil, unmarshal error, or expired)
+	if len(sessionIDsToRemove) > 0 {
+		sremArgs := make([]interface{}, len(sessionIDsToRemove))
+		for i, id := range sessionIDsToRemove {
+			sremArgs[i] = id
+		}
+		pipe.SRem(ctx, userKey, sremArgs...)
+	}
+
+	// Execute the pipeline for any DEL or SREM commands.
+	if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil { // redis.Nil can be returned if all commands in pipeline target non-existent keys
+		return nil, fmt.Errorf("failed to execute session cleanup pipeline: %w", err)
+	}
+
+	return sessions, nil
 }
 
 // DeleteSession removes a session and its index entry.

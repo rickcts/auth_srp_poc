@@ -10,8 +10,21 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 )
 
+type SessionService struct {
+	sessionRepo repository.SessionRepository
+	userRepo    repository.UserRepository
+	tokenSvc    JWTGenerator
+}
+
+var _ SessionGenerator = (*SessionService)(nil)
+
+// NewTokenService creates a TokenService
+func NewSessionService(sessionRepo repository.SessionRepository, userRepo repository.UserRepository, tokenSvc JWTGenerator) *SessionService {
+	return &SessionService{sessionRepo: sessionRepo, userRepo: userRepo, tokenSvc: tokenSvc}
+}
+
 // SignOut invalIDates a user's session.
-func (s *SRPAuthService) SignOut(ctx context.Context, sessionToken string) error {
+func (s *SessionService) SignOut(ctx context.Context, sessionToken string) error {
 	if sessionToken == "" {
 		return errors.New("session token cannot be empty")
 	}
@@ -32,9 +45,32 @@ func (s *SRPAuthService) SignOut(ctx context.Context, sessionToken string) error
 	return nil
 }
 
+func (s *SessionService) GetUserSessions(ctx context.Context, authID string) (*models.GetUserSessionsResponse, error) {
+	if authID == "" {
+		return nil, errors.New("authID cannot be empty")
+	}
+
+	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user info: %w", err)
+	}
+	userID := userInfo.ID
+
+	log.Printf("[AuthService.GetUserSessions] Attempting to get sessions for UserID: %v", userID)
+
+	sessions, err := s.sessionRepo.GetSessions(ctx, userID)
+	if err != nil {
+		log.Printf("[AuthService.GetUserSessions] ERROR: Failed to get sessions for UserID '%v': %v", userID, err)
+		return nil, fmt.Errorf("failed to get user sessions: %w", err)
+	}
+
+	log.Printf("[AuthService.GetUserSessions] SUCCESS: Retrieved %d sessions for UserID: %v", len(sessions), userID)
+	return &models.GetUserSessionsResponse{Sessions: sessions}, nil
+}
+
 // ExtendUserSession valIdates an existing session token, issues a new one with a new expiry,
 // and stores the new session.
-func (s *SRPAuthService) ExtendUserSession(ctx context.Context, currentSessionToken string) (*models.ExtendedSessionResponse, error) {
+func (s *SessionService) ExtendUserSession(ctx context.Context, currentSessionToken string) (*models.ExtendedSessionResponse, error) {
 	if currentSessionToken == "" {
 		return nil, errors.New("current session token cannot be empty")
 	}
@@ -93,7 +129,7 @@ func (s *SRPAuthService) ExtendUserSession(ctx context.Context, currentSessionTo
 	}, nil
 }
 
-func (s *SRPAuthService) VerifySessionToken(ctx context.Context, sessionTokenID string) (*models.VerifyTokenResponse, error) {
+func (s *SessionService) VerifySessionToken(ctx context.Context, sessionTokenID string) (*models.VerifyTokenResponse, error) {
 	if sessionTokenID == "" {
 		return nil, errors.New("session token cannot be empty")
 	}
@@ -124,15 +160,16 @@ func (s *SRPAuthService) VerifySessionToken(ctx context.Context, sessionTokenID 
 }
 
 // SignOutUserSessions invalidates all sessions for a given user, optionally excluding some.
-func (s *SRPAuthService) SignOutUserSessions(ctx context.Context, authID string, currentSessionTokenToExclude ...string) (int64, error) {
+func (s *SessionService) SignOutUserSessions(ctx context.Context, authID string, currentSessionTokenToExclude ...string) (int64, error) {
 	if authID == "" {
 		return 0, errors.New("userID cannot be empty")
 	}
 	user, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
 	if err != nil {
-
+		log.Printf("[AuthService.SignOutUserSessions] ERROR: Failed to get user info for AuthID '%s': %v", authID, err)
+		return 0, fmt.Errorf("failed to get user info: %w", err)
 	}
-	userID := user.ID
+	userID := user.ID // Now safe to access user.ID
 
 	log.Printf("[AuthService.SignOutUserSessions] Attempting to sign out all sessions for UserID: %v, excluding %d tokens", userID, len(currentSessionTokenToExclude))
 

@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/goccy/go-json"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"

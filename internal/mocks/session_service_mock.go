@@ -27,6 +27,21 @@ func (_m *MockSessionGenerator) VerifySessionToken(ctx context.Context, sessionT
 	return r0, ret.Error(1)
 }
 
+// GetUserSessions provides a mock function with given fields: ctx, sessionTokenID
+func (_m *MockSessionGenerator) GetUserSessions(ctx context.Context, sessionTokenID string) (*models.GetUserSessionsResponse, error) {
+	ret := _m.Called(ctx, sessionTokenID)
+
+	var r0 *models.GetUserSessionsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, string) *models.GetUserSessionsResponse); ok {
+		r0 = rf(ctx, sessionTokenID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.GetUserSessionsResponse)
+		}
+	}
+	return r0, ret.Error(1)
+}
+
 // ExtendUserSession provides a mock function with given fields: ctx, currentSessionToken
 func (_m *MockSessionGenerator) ExtendUserSession(ctx context.Context, currentSessionToken string) (*models.ExtendedSessionResponse, error) {
 	ret := _m.Called(ctx, currentSessionToken)
