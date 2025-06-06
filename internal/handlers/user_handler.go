@@ -5,26 +5,29 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
-type JWTAuthHandler struct {
-	JWTAuthService service.JWTGenerator
+type UserHandler struct {
+	JWTService     service.JWTGenerator
 	SessionService service.SessionGenerator
+	UserSerivice   service.UserGenerator
 }
 
-// NewJWTAuthHandler creates a new AuthHandler
-func NewJWTAuthHandler(authService service.JWTGenerator, sessionService service.SessionGenerator) *JWTAuthHandler {
-	return &JWTAuthHandler{
-		JWTAuthService: authService,
+// NewUserHandler creates a new AuthHandler
+func NewUserHandler(authService service.JWTGenerator, sessionService service.SessionGenerator, userService service.UserGenerator) *UserHandler {
+	return &UserHandler{
+		JWTService:     authService,
 		SessionService: sessionService,
+		UserSerivice:   userService,
 	}
 }
 
 // VerifyToken verifies jwt token and check if it is currently valid session token
-func (h *JWTAuthHandler) VerifyToken(c echo.Context) error {
+func (h *UserHandler) VerifyToken(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Authorization header is missing")
@@ -55,7 +58,7 @@ func (h *JWTAuthHandler) VerifyToken(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (h *JWTAuthHandler) GetUserSessions(c echo.Context) error {
+func (h *UserHandler) GetUserSessions(c echo.Context) error {
 	userContext := c.Get("user")
 	if userContext == nil {
 		// This case should ideally be caught by middleware, returning 401.
@@ -85,7 +88,7 @@ func (h *JWTAuthHandler) GetUserSessions(c echo.Context) error {
 }
 
 // Logout current session by delete sessionID in the session store
-func (h *JWTAuthHandler) Logout(c echo.Context) error {
+func (h *UserHandler) Logout(c echo.Context) error {
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Authorization header is missing")
@@ -110,29 +113,38 @@ func (h *JWTAuthHandler) Logout(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully logged out"})
 }
 
-// LogoutAllDevices handles logging out the user for all logged in sessions.
-func (h *JWTAuthHandler) LogoutAllSessions(c echo.Context) error {
+// Get authID from jwt, return http error not able to parse
+func getAuthIDFromContext(c echo.Context) (string, error) {
 	userContext := c.Get("user")
 	if userContext == nil {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error: 'user' not found in context. This indicates a middleware issue or misconfiguration.")
 		// This case should ideally be caught by middleware, returning 401.
 		// If it reaches here, it's an unexpected state.
-		return echo.NewHTTPError(http.StatusUnauthorized, "User not authenticated: context missing user information")
+		return "", echo.NewHTTPError(http.StatusUnauthorized, "User not authenticated: context missing user information")
 	}
 
 	user, ok := userContext.(*jwt.Token)
 	if !ok {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error: 'user' in context is not of type *jwt.Token. Actual type: %T", userContext)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error: user context type mismatch")
+		return "", echo.NewHTTPError(http.StatusInternalServerError, "Internal server error: user context type mismatch")
 	}
 
 	authID, err := user.Claims.GetSubject()
 	if err != nil {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error getting subject claim from token: %v", err)
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: cannot get subject")
+		return "", echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: cannot get subject")
 	} else if authID == "" {
 		log.Printf("[JWTAuthHandler.LogoutAllDevices] Error: Subject claim is empty in token.")
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: subject claim is missing or empty")
+		return "", echo.NewHTTPError(http.StatusUnauthorized, "Invalid token: subject claim is missing or empty")
+	}
+	return authID, nil
+}
+
+// LogoutAllDevices handles logging out the user for all logged in sessions.
+func (h *UserHandler) LogoutAllSessions(c echo.Context) error {
+	authID, err := getAuthIDFromContext(c)
+	if err != nil {
+		return err
 	}
 
 	authHeader := c.Request().Header.Get("Authorization") // This header is for the *current* session token to exclude.
@@ -148,20 +160,23 @@ func (h *JWTAuthHandler) LogoutAllSessions(c echo.Context) error {
 			log.Printf("[JWTAuthHandler.LogoutAllDevices] Warning: Authorization header present but format is not 'Bearer {token}'. Proceeding without excluding current token.")
 		}
 	}
-	ctx := c.Request().Context()
-	resp, err := h.SessionService.VerifySessionToken(ctx, currentSessionTokenID)
-	if err != nil {
-		log.Printf("[JWTAuthHandler.VerifyToken] Session verification failed for token %.10s...: %v", currentSessionTokenID, err)
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired session token")
-	}
-
-	if !resp.IsValid {
-		log.Printf("[JWTAuthHandler.VerifyToken] Session token %.10s... is explicitly marked as invalid.", currentSessionTokenID)
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid session token")
-	}
 
 	var excludeTokens []string
 	if currentSessionTokenID != "" {
+		ctx := c.Request().Context()
+		resp, err := h.SessionService.VerifySessionToken(ctx, currentSessionTokenID)
+		if err != nil {
+			log.Printf("[JWTAuthHandler.LogoutAllDevices] Session verification failed for exclusion token %.10s...: %v", currentSessionTokenID, err)
+			// If the token meant for exclusion is invalid, it's safer to return an error
+			// than to proceed and potentially not exclude an active (but unverified) session.
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired session token provided for exclusion")
+		}
+
+		if !resp.IsValid {
+			log.Printf("[JWTAuthHandler.LogoutAllDevices] Session token for exclusion %.10s... is explicitly marked as invalid.", currentSessionTokenID)
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid session token provided for exclusion")
+		}
+		// Only add to excludeTokens if it's valid and non-empty
 		excludeTokens = append(excludeTokens, currentSessionTokenID)
 	}
 
@@ -173,4 +188,36 @@ func (h *JWTAuthHandler) LogoutAllSessions(c echo.Context) error {
 
 	log.Printf("[JWTAuthHandler.LogoutAllDevices] Successfully logged out %d other devices for AuthID %v", deletedCount, authID)
 	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully logged out other devices.", "devices_logged_out": deletedCount})
+}
+
+func (h *UserHandler) UpdateUser(c echo.Context) error {
+	authID, err := getAuthIDFromContext(c)
+	if err != nil {
+		return err
+	}
+
+	req := new(models.NewUserInfoRequest)
+	if err := c.Bind(req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	err = h.UserSerivice.UpdateUserInfo(c.Request().Context(), authID, req.DisplayName)
+	if err != nil {
+		log.Printf("[JWTAuthHandler.UpdateUser] Failed to update user info for AuthID %v: %v", authID, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to update user info")
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+func (h *UserHandler) DeleteUser(c echo.Context) error {
+	authID, err := getAuthIDFromContext(c)
+	if err != nil {
+		return err
+	}
+	err = h.UserSerivice.DeleteUser(c.Request().Context(), authID)
+	if err != nil {
+		log.Printf("[JWTAuthHandler.DeleteUser] Failed to delete user for AuthID %v: %v", authID, err)
+	}
+	return c.NoContent(http.StatusOK)
 }

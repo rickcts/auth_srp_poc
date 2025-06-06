@@ -21,9 +21,10 @@ import (
 )
 
 type jwtAuthHandlerTestDeps struct {
-	mockJWTAuthService *mocks.MockJWTGenerator     // Renamed for clarity
-	mockSessionService *mocks.MockSessionGenerator // Renamed for clarity
-	handler            *handlers.JWTAuthHandler
+	mockJWTAuthService *mocks.MockJWTGenerator
+	mockSessionService *mocks.MockSessionGenerator
+	mockUserService    *mocks.MockUserGenerator
+	handler            *handlers.UserHandler
 	echo               *echo.Echo
 }
 
@@ -32,8 +33,9 @@ func setupJWTAuthHandlerTest(t *testing.T) jwtAuthHandlerTestDeps {
 	deps := jwtAuthHandlerTestDeps{
 		mockJWTAuthService: new(mocks.MockJWTGenerator),
 		mockSessionService: new(mocks.MockSessionGenerator),
+		mockUserService:    new(mocks.MockUserGenerator),
 	}
-	deps.handler = handlers.NewJWTAuthHandler(deps.mockJWTAuthService, deps.mockSessionService)
+	deps.handler = handlers.NewUserHandler(deps.mockJWTAuthService, deps.mockSessionService, deps.mockUserService)
 	deps.echo = echo.New()
 	// Register routes directly for testing individual handlers
 	// This avoids needing the full router setup with actual middleware for unit tests
@@ -278,6 +280,8 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		deletedCount := int64(5)
+		deps.mockSessionService.On("VerifySessionToken", mock.Anything, currentToken).
+			Return(&models.VerifyTokenResponse{IsValid: true, UserID: 1, SessionID: currentToken}, nil).Once()
 		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID, currentToken).
 			Return(deletedCount, nil).Once()
 
@@ -341,6 +345,7 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		deletedCount := int64(5)
 		// Service will be called with authID and an empty excludeTokens list
+
 		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID).
 			Return(deletedCount, nil).Once()
 
@@ -398,6 +403,8 @@ func TestJWTAuthHandler_LogoutAllDevices(t *testing.T) {
 	t.Run("SessionServiceError", func(t *testing.T) {
 		deps := setupJWTAuthHandlerTest(t)
 		serviceErr := errors.New("db error during mass logout")
+		deps.mockSessionService.On("VerifySessionToken", mock.Anything, currentToken).
+			Return(&models.VerifyTokenResponse{IsValid: true, UserID: 1, SessionID: currentToken}, nil).Once()
 		deps.mockSessionService.On("SignOutUserSessions", mock.Anything, authID, currentToken).
 			Return(int64(0), serviceErr).Once()
 
