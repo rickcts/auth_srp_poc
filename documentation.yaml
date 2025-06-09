@@ -1,0 +1,1261 @@
+openapi: 3.0.0
+info:
+  title: SCS AAA Server API
+  version: v1
+  description: API for Authentication, Authorization, and Accounting services.
+servers:
+  - url: http://localhost:8080 # Replace with your actual server URL
+    description: Local development server
+
+components:
+  schemas:
+    AuthIDRequest:
+      type: object
+      required:
+        - authId
+      properties:
+        authId:
+          type: string
+          description: The authentication identifier, typically an email.
+          example: user@example.com # Added example
+
+    SRPRegisterRequest:
+      type: object
+      required:
+        - authId
+        - displayName
+        - salt
+        - verifier
+      properties:
+        authId:
+          type: string
+          description: The user's authentication ID (e.g., email).
+          example: newuser@example.com
+        displayName:
+          type: string
+          description: The user's display name.
+          example: John Doe
+        salt:
+          type: string
+          description: Hex encoded salt 's'.
+          example: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2" # Example hex string
+        verifier:
+          type: string
+          description: Hex encoded verifier 'v'.
+          example: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2" # Example hex string
+
+    ActivateUserRequest:
+      type: object
+      required:
+        - authId
+        - code
+      properties:
+        authId:
+          type: string
+          description: The user's authentication ID.
+          example: user@example.com
+        code:
+          type: string
+          description: The activation code sent to the user.
+          example: "123456"
+
+    AuthStep1Request:
+      type: object
+      required:
+        - authId
+      properties:
+        authId:
+          type: string
+          description: The user's authentication ID.
+          example: user@example.com
+
+    AuthStep1Response:
+      type: object
+      properties:
+        s:
+          type: string
+          description: Hex encoded salt.
+          example: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+        B:
+          type: string
+          description: Hex encoded server ephemeral public value B.
+          example: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+
+    AuthStep2Request:
+      type: object
+      required:
+        - clientA
+        - authId
+        - clientProofM1
+      properties:
+        clientA:
+          type: string
+          description: Hex encoded client public value A.
+          example: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+        authId:
+          type: string
+          description: The user's authentication ID.
+          example: user@example.com
+        clientProofM1:
+          type: string
+          description: Hex encoded client proof M1.
+          example: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+
+    AuthStep3Response:
+      type: object
+      properties:
+        serverProofM2:
+          type: string
+          description: Hex encoded server proof M2.
+          example: "b2a1e4d3c6b5a8f7e0d9c2b1a4f3e6d5c8b7a0f9e2d1c4b3a6f5e8d7c0b9a2f1"
+        sessionToken:
+          type: string
+          description: JWT session token.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        sessionExpiryDate:
+          type: string
+          format: date-time
+          description: Expiry date of the session token.
+          example: "2025-12-31T23:59:59Z"
+
+    InitiatePasswordResetRequest:
+      type: object
+      required:
+        - authId
+      properties:
+        authId:
+          type: string
+          description: The user's authentication ID (typically email).
+          example: user@example.com
+
+    ValidatePasswordResetTokenRequest:
+      type: object
+      required:
+        - authId
+        - token
+      properties:
+        authId:
+          type: string
+          description: The user's identifier (e.g., email).
+          example: user@example.com
+        token:
+          type: string
+          description: The password reset token (e.g., 6-digit code).
+          example: "654321"
+
+    ValidatePasswordResetTokenResponse:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          description: Indicates if the token is valid.
+          example: true
+        authId:
+          type: string
+          description: AuthID associated with the token, if valid.
+          example: user@example.com
+
+    CompletePasswordResetRequest:
+      type: object
+      required:
+        - authId
+        - token
+        - newSalt
+        - newVerifier
+      properties:
+        authId:
+          type: string
+          description: The user's identifier (e.g., email).
+          example: user@example.com
+        token:
+          type: string
+          description: The password reset token.
+          example: "654321"
+        newSalt:
+          type: string
+          description: Hex encoded new salt 's'.
+          example: "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2"
+        newVerifier:
+          type: string
+          description: Hex encoded new verifier 'v'.
+          example: "d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2"
+
+    InitiateChangePasswordResponse:
+      type: object
+      properties:
+        salt:
+          type: string
+          description: User's current salt.
+          example: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+        serverB:
+          type: string
+          description: Server's public ephemeral 'B' for current password verification.
+          example: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+
+    ConfirmChangePasswordRequest:
+      type: object
+      required:
+        - clientA
+        - clientM1
+        - newSalt
+        - newVerifier
+      properties:
+        clientA:
+          type: string
+          description: Client's public ephemeral 'A' for current password.
+          example: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+        clientM1:
+          type: string
+          description: Client's proof M1 for current password.
+          example: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+        newSalt:
+          type: string
+          description: New salt for the new password.
+          example: "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2"
+        newVerifier:
+          type: string
+          description: New verifier for the new password.
+          example: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+
+    MobileLoginRequest:
+      type: object
+      required:
+        - code
+        - codeVerifier
+        - authProvider
+      properties:
+        code:
+          type: string
+          description: Authorization code from the provider.
+          example: "M.R3_BL2.-1.e34927b5-00c9-4b6e-b3f5-7f9a1d2c3e4f"
+        codeVerifier:
+          type: string
+          description: PKCE code verifier.
+          example: "dBjftJeZ4CVP-mB92K27uhbUlyxPRf_oriPqXw_NLEo"
+        authProvider:
+          type: string
+          description: The OAuth provider (e.g., "MICROSOFT").
+          example: "MICROSOFT"
+
+    NewUserInfoRequest:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          description: The new display name for the user.
+          example: Jane Doe
+
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: Unique ID for this session.
+          example: "sess_abc123def456ghi789jkl0"
+        userId:
+          type: integer
+          format: int64
+          description: The ID of the user associated with this session.
+          example: 101
+        authId:
+          type: string
+          description: The authentication ID used for login.
+          example: user@example.com
+        username:
+          type: string
+          description: The username (can be useful).
+          example: user123
+        createdAt:
+          type: string
+          format: date-time
+          description: When the session was created.
+          example: "2025-01-15T10:00:00Z"
+        expiry:
+          type: string
+          format: date-time
+          description: When the session expires.
+          example: "2025-01-15T11:00:00Z"
+        host:
+          type: string
+          format: string
+          description: The host of the request.
+          example: "192.168.1.100"
+        userAgent:
+          type: string
+          format: string
+          description: The user-agent of the request.
+          example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+    GetUserSessionsResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+          example: # Example for the array of sessions
+            - sessionId: "sess_abc123def456ghi789jkl0"
+              userId: 101
+              authId: "user@example.com"
+              username: "user123"
+              createdAt: "2025-01-15T10:00:00Z"
+              expiry: "2025-01-15T11:00:00Z"
+              host: "192.168.1.100"
+              userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            - sessionId: "sess_mno987pqr654stu321vwx0"
+              userId: 101
+              authId: "user@example.com"
+              username: "user123"
+              createdAt: "2025-01-15T09:30:00Z"
+              expiry: "2025-01-15T10:30:00Z"
+              host: "10.0.0.50"
+              userAgent: "PostmanRuntime/7.36.1"
+
+
+    OAuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Provider-specific user ID.
+          example: "abcdef1234567890abcdef12"
+        displayName:
+          type: string
+          example: "OAuth User"
+        mail: # Matches json:"mail"
+          type: string
+          format: email
+          example: "oauth.user@example.com"
+        aud:
+          type: string
+          description: Audience claim from ID token.
+          example: "some_client_id"
+        sub:
+          type: string
+          description: Subject claim from ID token.
+          example: "oauth_subject_id_123"
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A message describing the error.
+          example: "User not found"
+
+    CheckEmailExistsResponse:
+      type: object
+      properties:
+        exists:
+          type: boolean
+          example: true
+
+    SimpleMessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation successful"
+
+    OAuthLoginSuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Login successful!"
+        user:
+          $ref: '#/components/schemas/OAuthUser'
+          # You can add an example directly under 'user' if you want to override/provide a specific example for this schema instance
+          example:
+            id: "oauth_user_specific_id"
+            displayName: "Specific OAuth User"
+            mail: "specific.oauth.user@example.com"
+            aud: "specific_client"
+            sub: "specific_subject"
+
+    LogoutAllSuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Successfully logged out other devices."
+        devices_logged_out:
+          type: integer
+          format: int64
+          example: 3
+
+  securitySchemes:
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /api/auth/sessions/list:
+    get:
+      tags:
+        - User Sessions
+      summary: Get active sessions for the current user
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserSessionsResponse'
+              examples: # Example for the entire response body
+                successfulResponse:
+                  summary: Example of successful session retrieval
+                  value:
+                    sessions:
+                      - sessionId: "sess_abc123def456ghi789jkl0"
+                        userId: 101
+                        authId: "user@example.com"
+                        username: "user123"
+                        createdAt: "2025-01-15T10:00:00Z"
+                        expiry: "2025-01-15T11:00:00Z"
+                        host: "192.168.1.100"
+                        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                      - sessionId: "sess_mno987pqr654stu321vwx0"
+                        userId: 101
+                        authId: "user@example.com"
+                        username: "user123"
+                        createdAt: "2025-01-15T09:30:00Z"
+                        expiry: "2025-01-15T10:30:00Z"
+                        host: "10.0.0.50"
+                        userAgent: "PostmanRuntime/7.36.1"
+        '401':
+          description: Unauthorized. Invalid or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid or missing JWT"
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error occurred while fetching sessions."
+
+  /api/auth/sessions/verify:
+    post:
+      tags:
+        - User Sessions
+      summary: Verify the current JWT session token
+      security:
+        - JWTAuth: []
+      responses:
+        '204':
+          description: Token is valid.
+        '401':
+          description: Unauthorized. Invalid, expired, or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Token is invalid or expired"
+
+  /api/auth/sessions/logout:
+    post:
+      tags:
+        - User Sessions
+      summary: Logout the current session
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: Successfully logged out.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+              example:
+                message: "Successfully logged out"
+        '401':
+          description: Unauthorized. Invalid or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid or missing JWT"
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during logout"
+
+  /api/auth/sessions/logout-all:
+    post:
+      tags:
+        - User Sessions
+      summary: Logout all sessions for the current user, optionally excluding the current one
+      description: The current session token (from Authorization header) will be excluded from logout if provided and valid.
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: Successfully logged out other devices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutAllSuccessResponse'
+              example:
+                message: "Successfully logged out other devices."
+                devices_logged_out: 2
+        '401':
+          description: Unauthorized. Invalid or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid or missing JWT"
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during logout all sessions"
+
+
+  /api/auth/users/: # This maps to the userGroup.PUT("/") and DELETE("/")
+    put:
+      tags:
+        - User Management
+      summary: Update current user's information
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUserInfoRequest'
+            example:
+              displayName: "Updated User Name"
+      responses:
+        '205':
+          description: User information updated successfully.
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Display name cannot be empty"
+        '401':
+          description: Unauthorized. Invalid or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid JWT"
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error updating user information"
+    delete:
+      tags:
+        - User Management
+      summary: Delete the current user's account
+      security:
+        - JWTAuth: []
+      responses:
+        '204':
+          description: User account deleted successfully.
+        '401':
+          description: Unauthorized. Invalid or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Missing JWT"
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error deleting user account"
+
+  /api/auth/srp/sign-up/check:
+    post:
+      tags:
+        - SRP Authentication
+      summary: Check if an email (AuthID) already exists
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthIDRequest'
+            example:
+              authId: "check@example.com"
+      responses:
+        '200':
+          description: Check result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckEmailExistsResponse'
+              example:
+                exists: false
+        '400':
+          description: Bad Request. AuthID is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "AuthID is required"
+        '409':
+          description: Conflict. This email is already in use.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "This email is already in use"
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error checking email existence"
+
+  /api/auth/srp/sign-up:
+    post:
+      tags:
+        - SRP Authentication
+      summary: Register a new user with SRP credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SRPRegisterRequest'
+            example:
+              authId: "newuser@example.com"
+              displayName: "New User"
+              salt: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+              verifier: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+      responses:
+        '201':
+          description: User registered successfully (account may be inactive).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+              example:
+                message: "User registered successfully."
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid request body: Missing required fields"
+        '409':
+          description: Conflict. Username already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Username already exists"
+        '500':
+          description: Internal Server Error. Registration failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Registration failed due to an internal error"
+
+  /api/auth/srp/sign-up/verification:
+    post:
+      tags:
+        - SRP Authentication
+      summary: Generate and send an activation email to the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthIDRequest'
+            example:
+              authId: "user@example.com"
+      responses:
+        '200':
+          description: Activation email sent successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+              example:
+                message: "Activation email sent successfully. Please check your inbox."
+        '400':
+          description: Bad Request. AuthID is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "AuthID is required"
+        '404':
+          description: Not Found. User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "User with provided AuthID not found."
+        '409':
+          description: Conflict. User is already activated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "User is already activated"
+        '500':
+          description: Internal Server Error. Failed to send activation email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Failed to send activation email due to internal error."
+
+  /api/auth/srp/sign-up/activate:
+    post:
+      tags:
+        - SRP Authentication
+      summary: Activate a user account with an activation code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateUserRequest'
+            example:
+              authId: "user@example.com"
+              code: "123456"
+      responses:
+        '200':
+          description: User activated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+              example:
+                message: "User activated successfully"
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid request body: Code cannot be empty."
+        '401':
+          description: Unauthorized. Invalid, expired, or already consumed activation code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid or expired activation code."
+        '404':
+          description: Not Found. User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "User not found for activation."
+        '500':
+          description: Internal Server Error. Failed to activate user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Failed to activate user due to internal error."
+
+  /api/auth/srp/login/email:
+    post:
+      tags:
+        - SRP Authentication
+      summary: SRP Step 1 - Client sends AuthID (email)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthStep1Request'
+            example:
+              authId: "user@example.com"
+      responses:
+        '200':
+          description: Server responds with salt (s) and server public ephemeral (B).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthStep1Response'
+              example:
+                s: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+                B: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "AuthID is missing in the request."
+        '401':
+          description: Unauthorized. Invalid client credentials (user not found).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid credentials: User not found."
+        '403':
+          description: Forbidden. User has not been activated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Forbidden: User account is not activated."
+        '500':
+          description: Internal Server Error. Authentication initiation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during SRP step 1."
+
+  /api/auth/srp/login/proof:
+    post:
+      tags:
+        - SRP Authentication
+      summary: SRP Step 2 - Client sends proof (A, M1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthStep2Request'
+            example:
+              clientA: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+              authId: "user@example.com"
+              clientProofM1: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+      responses:
+        '200':
+          description: Authentication successful. Server responds with its proof (M2) and session token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthStep3Response'
+              example:
+                serverProofM2: "b2a1e4d3c6b5a8f7e0d9c2b1a4f3e6d5c8b7a0f9e2d1c4b3a6f5e8d7c0b9a2f1"
+                sessionToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+                sessionExpiryDate: "2025-12-31T23:59:59Z"
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Missing required fields in login proof request."
+        '401':
+          description: Unauthorized. Authentication session expired or invalid credentials/proof.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid client proof M1."
+        '500':
+          description: Internal Server Error. Authentication verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during SRP step 2."
+
+  /api/auth/srp/password/reset:
+    post:
+      tags:
+        - SRP Password Management
+      summary: Initiate password reset process
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiatePasswordResetRequest'
+            example:
+              authId: "user@example.com"
+      responses:
+        '200':
+          description: If the account exists, a password reset email has been sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+              example:
+                message: "If your account exists, a password reset email has been sent."
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "AuthID is required for password reset initiation."
+        '500':
+          description: Internal Server Error. Password reset initiation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during password reset initiation."
+
+  /api/auth/srp/password/reset/validate:
+    post:
+      tags:
+        - SRP Password Management
+      summary: Validate a password reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidatePasswordResetTokenRequest'
+            example:
+              authId: "user@example.com"
+              token: "654321"
+      responses:
+        '200':
+          description: Token validation result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidatePasswordResetTokenResponse'
+              example:
+                isValid: true
+                authId: "user@example.com"
+        '400':
+          description: Bad Request. Token or AuthID cannot be empty.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Token and AuthID are required."
+        '401':
+          description: Unauthorized. Token is invalid or expired.
+          content:
+            application/json:
+              schema: # The handler returns the ValidatePasswordResetTokenResponse with IsValid: false
+                $ref: '#/components/schemas/ValidatePasswordResetTokenResponse'
+              example: # Example for a 401 response with IsValid: false
+                isValid: false
+                authId: "user@example.com" # AuthID may still be returned even if token is invalid
+
+  /api/auth/srp/password/reset/complete:
+    post:
+      tags:
+        - SRP Password Management
+      summary: Complete the password reset process with a new password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletePasswordResetRequest'
+            example:
+              authId: "user@example.com"
+              token: "654321"
+              newSalt: "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2"
+              newVerifier: "d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2"
+      responses:
+        '200':
+          description: Password has been reset successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+              example:
+                message: "Password has been reset successfully."
+        '400':
+          description: Bad Request. Invalid request body or token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid token or new password details."
+
+  /api/auth/srp/password/change/initiate:
+    post:
+      tags:
+        - SRP Password Management
+      summary: Initiate password change for an authenticated user (Step 1)
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: Server responds with current salt and server public ephemeral 'B'.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitiateChangePasswordResponse'
+              example:
+                salt: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+                serverB: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+        '401':
+          description: Unauthorized. Invalid or missing JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid JWT for password change initiation."
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error initiating password change."
+
+  /api/auth/srp/password/change/confirm:
+    post:
+      tags:
+        - SRP Password Management
+      summary: Confirm password change for an authenticated user (Step 2)
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmChangePasswordRequest'
+            example:
+              clientA: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+              clientM1: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+              newSalt: "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2"
+              newVerifier: "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2"
+      responses:
+        '204':
+          description: Password changed successfully.
+        '400':
+          description: Bad Request. Invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Missing required fields for password change confirmation."
+        '401':
+          description: Unauthorized. Current password verification failed or session expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Current password verification failed."
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error confirming password change."
+
+  /api/auth/oauth/microsoft/login:
+    get:
+      tags:
+        - OAuth - Microsoft
+      summary: Initiate OAuth2 login flow with Microsoft
+      description: Redirects the user to Microsoft's login page. Sets a state cookie for CSRF protection.
+      responses:
+        '307':
+          description: Temporary Redirect to Microsoft's authorization server. The 'Location' header contains the redirect URL. A state cookie is set.
+          headers:
+            Location:
+              description: The URL to redirect to for Microsoft authentication.
+              schema:
+                type: string
+                example: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fapi%2Fauth%2Foauth%2Fmicrosoft%2Fcallback&scope=openid%20profile%20email&state=some_random_state"
+
+  /api/auth/oauth/microsoft/callback:
+    get:
+      tags:
+        - OAuth - Microsoft
+      summary: OAuth2 callback endpoint for Microsoft
+      description: Handles the redirect from Microsoft after user authentication. Exchanges authorization code for tokens and fetches user info. Clears the state cookie.
+      parameters:
+        - name: code
+          in: query
+          required: false # Required for success, but provider might return error instead
+          description: The authorization code from Microsoft.
+          schema:
+            type: string
+            example: "M.R3_BL2.-1.e34927b5-00c9-4b6e-b3f5-7f9a1d2c3e4f"
+        - name: state
+          in: query
+          required: true
+          description: The state parameter for CSRF protection. Must match the value in the state cookie.
+          schema:
+            type: string
+            example: "some_random_state"
+        - name: error
+          in: query
+          required: false
+          description: Error code from Microsoft if authentication failed.
+          schema:
+            type: string
+            example: "access_denied"
+        - name: error_description
+          in: query
+          required: false
+          description: Description of the error from Microsoft.
+          schema:
+            type: string
+            example: "The user has denied access to the application."
+      responses:
+        '200':
+          description: Login successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthLoginSuccessResponse'
+              examples:
+                successResponse:
+                  summary: Successful OAuth Login
+                  value:
+                    message: "Login successful!"
+                    user:
+                      id: "ms_user_id_123"
+                      displayName: "Microsoft User"
+                      mail: "ms.user@example.com"
+                      aud: "your_client_id"
+                      sub: "ms_sub_claim"
+        '400':
+          description: Bad Request. State mismatch, missing code, or other OAuth error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                stateMismatch:
+                  summary: State Mismatch Error
+                  value:
+                    message: "CSRF state mismatch or invalid state."
+                missingCode:
+                  summary: Missing Authorization Code Error
+                  value:
+                    message: "Authorization code is missing."
+        '401':
+          description: Unauthorized. Invalid state parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized: Invalid state parameter."
+        '500':
+          description: Internal Server Error. Failed to exchange code or fetch user info.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during OAuth callback process."
+
+  /api/auth/oauth/microsoft/mobile: # Documenting as POST based on handler logic
+    post:
+      tags:
+        - OAuth - Microsoft
+      summary: Handle OAuth2 token exchange for mobile applications (PKCE)
+      description: Exchanges an authorization code and PKCE verifier for tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileLoginRequest'
+            example:
+              code: "M.R3_BL2.-1.e34927b5-00c9-4b6e-b3f5-7f9a1d2c3e4f"
+              codeVerifier: "dBjftJeZ4CVP-mB92K27uhbUlyxPRf_oriPqXw_NLEo"
+              authProvider: "MICROSOFT"
+      responses:
+        '201':
+          description: Login successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthLoginSuccessResponse'
+              example:
+                message: "Login successful!"
+                user:
+                  id: "mobile_ms_user_id"
+                  displayName: "Mobile Microsoft User"
+                  mail: "mobile.ms.user@example.com"
+                  aud: "your_mobile_client_id"
+                  sub: "mobile_ms_sub"
+        '400':
+          description: Bad Request. Missing code or code_verifier, or invalid request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid request: code or codeVerifier is missing."
+        '500':
+          description: Internal Server Error. Failed to authenticate with provider or fetch user info.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Internal server error during mobile OAuth login."
