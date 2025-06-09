@@ -8,14 +8,19 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 )
 
+// VerificationTokenEntry stores the token value and its expiry.
 type VerificationTokenEntry struct {
-	AuthID string
-	Expiry time.Time
+	TokenValue string
+	Expiry     time.Time
 }
 
 // MemoryVerificationTokenRepository implements VerificationTokenRepository in memory.
 // NOT FOR PRODUCTION use.
 type MemoryVerificationTokenRepository struct {
+	// tokens map[string]VerificationTokenEntry // Old: token_value -> {authID, expiry}
+	// New: authID_type -> {token_value, expiry}
+	// Example key: "user@example.com:pwreset"
+	// Example key: "user@example.com:activate"
 	tokens map[string]VerificationTokenEntry
 	mutex  sync.RWMutex
 }
@@ -27,124 +32,131 @@ func NewMemoryVerificationTokenRepository() repository.VerificationTokenReposito
 	}
 }
 
-// StorePasswordResetToken saves a new password reset token.
-func (r *MemoryVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expiry time.Time) error {
+func makeMemoryKey(authID, tokenType string) string {
+	return authID + ":" + tokenType
+}
+
+func (r *MemoryVerificationTokenRepository) storeToken(ctx context.Context, authID, tokenType, tokenValue string, expiryTime time.Time) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	r.tokens[token] = VerificationTokenEntry{
-		AuthID: authID,
-		Expiry: expiry,
+	if time.Until(expiryTime) <= 0 {
+		return repository.ErrVerificationTokenNotFound // Or specific error
+	}
+	key := makeMemoryKey(authID, tokenType)
+	r.tokens[key] = VerificationTokenEntry{
+		TokenValue: tokenValue,
+		Expiry:     expiryTime,
 	}
 	return nil
 }
 
-// ValidateAndConsumePasswordResetToken checks if a password reset token is valid and consumes it.
-func (r *MemoryVerificationTokenRepository) ValidateAndConsumePasswordResetToken(ctx context.Context, token string) (string, error) {
+func (r *MemoryVerificationTokenRepository) validateAndConsumeToken(ctx context.Context, authIDFromRequest, tokenType, tokenValueFromRequest string) (string, error) {
 	r.mutex.Lock() // Lock for read and potential delete
 	defer r.mutex.Unlock()
 
-	entry, exists := r.tokens[token]
+	key := makeMemoryKey(authIDFromRequest, tokenType)
+	entry, exists := r.tokens[key]
 	if !exists {
 		return "", repository.ErrVerificationTokenNotFound
 	}
 
 	if time.Now().UTC().After(entry.Expiry) {
 		// Token expired, clean it up
-		delete(r.tokens, token)
+		delete(r.tokens, key)
 		return "", repository.ErrVerificationTokenNotFound
 	}
 
-	// Token is valid, consume it (delete) and return authID
-	delete(r.tokens, token)
-	return entry.AuthID, nil
+	if entry.TokenValue != tokenValueFromRequest {
+		// Token mismatch, do not consume.
+		return "", repository.ErrVerificationTokenNotFound
+	}
+
+	// Token is valid and matches, consume it (delete) and return authID
+	delete(r.tokens, key)
+	return authIDFromRequest, nil
 }
 
-// GetAuthIDForValidPasswordResetToken checks if a password reset token is valid (exists, not expired)
-// without consuming it.
-func (r *MemoryVerificationTokenRepository) GetAuthIDForValidPasswordResetToken(ctx context.Context, token string) (string, error) {
+func (r *MemoryVerificationTokenRepository) getAuthIDForValidToken(ctx context.Context, authIDFromRequest, tokenType, tokenValueFromRequest string) (string, error) {
 	r.mutex.RLock() // Read lock only
 	defer r.mutex.RUnlock()
 
-	entry, exists := r.tokens[token]
+	key := makeMemoryKey(authIDFromRequest, tokenType)
+	entry, exists := r.tokens[key]
 	if !exists {
 		return "", repository.ErrVerificationTokenNotFound
 	}
 
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+	// Perform cleanup of expired tokens (optional, but good for memory repo)
+	// This part is tricky with RLock. For simplicity, GetAuthIDForValidToken might not aggressively clean.
+	// A separate cleanup goroutine or cleanup on write operations is better for memory repo.
+	// For now, just check current token's expiry.
 	now := time.Now().UTC()
-	for token, entry := range r.tokens {
-		if now.After(entry.Expiry) {
-			delete(r.tokens, token)
-		}
-	}
-	if time.Now().UTC().After(entry.Expiry) {
-		// Token expired, return not found.
-		// Note: This method doesn't clean up expired tokens; cleanup happens on consumption.
+	if now.After(entry.Expiry) {
 		return "", repository.ErrVerificationTokenNotFound
 	}
 
-	// Token is valid and not expired
-	return entry.AuthID, nil
+	if entry.TokenValue != tokenValueFromRequest {
+		return "", repository.ErrVerificationTokenNotFound
+	}
+
+	// Token is valid, not expired, and matches
+	return authIDFromRequest, nil
+}
+
+func (r *MemoryVerificationTokenRepository) deleteTokensForAuthID(ctx context.Context, authID, tokenType string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	key := makeMemoryKey(authID, tokenType)
+	delete(r.tokens, key)
+	return nil
 }
 
 // --- Activation Token Methods ---
 
 // StoreActivationToken saves a new activation token.
 func (r *MemoryVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, token string, expiryTime time.Time) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	r.tokens[token] = VerificationTokenEntry{ // Assuming same entry structure for simplicity
-		AuthID: authID,
-		Expiry: expiryTime,
-	}
-	return nil
+	return r.storeToken(ctx, authID, "activate", token, expiryTime)
 }
 
 // ValidateAndConsumeActivationToken checks if an activation token is valid and consumes it.
-func (r *MemoryVerificationTokenRepository) ValidateAndConsumeActivationToken(ctx context.Context, token string) (string, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	entry, exists := r.tokens[token]
-	if !exists {
-		return "", repository.ErrVerificationTokenNotFound
-	}
-
-	if time.Now().UTC().After(entry.Expiry) {
-		delete(r.tokens, token) // Clean up expired token
-		return "", repository.ErrVerificationTokenNotFound
-	}
-
-	delete(r.tokens, token) // Consume valid token
-	return entry.AuthID, nil
+func (r *MemoryVerificationTokenRepository) ValidateAndConsumeActivationToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {
+	return r.validateAndConsumeToken(ctx, authIDFromRequest, "activate", tokenFromRequest)
 }
 
 // GetAuthIDForValidActivationToken checks if an activation token is valid without consuming it.
-func (r *MemoryVerificationTokenRepository) GetAuthIDForValidActivationToken(ctx context.Context, token string) (string, error) {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
+func (r *MemoryVerificationTokenRepository) GetAuthIDForValidActivationToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {
+	return r.getAuthIDForValidToken(ctx, authIDFromRequest, "activate", tokenFromRequest)
+}
 
-	entry, exists := r.tokens[token]
-	if !exists {
-		return "", repository.ErrVerificationTokenNotFound
-	}
+func (r *MemoryVerificationTokenRepository) DeleteActivationTokensForAuthID(ctx context.Context, authID string) error {
+	return r.deleteTokensForAuthID(ctx, authID, "activate")
+}
 
-	if time.Now().UTC().After(entry.Expiry) {
-		// Don't delete here as it's a read-only check
-		return "", repository.ErrVerificationTokenNotFound
-	}
+// --- Password Reset Token Methods ---
 
-	return entry.AuthID, nil
+func (r *MemoryVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expiry time.Time) error {
+	return r.storeToken(ctx, authID, "pwreset", token, expiry)
+}
+
+func (r *MemoryVerificationTokenRepository) ValidateAndConsumePasswordResetToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {
+	return r.validateAndConsumeToken(ctx, authIDFromRequest, "pwreset", tokenFromRequest)
+}
+
+func (r *MemoryVerificationTokenRepository) GetAuthIDForValidPasswordResetToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {
+	return r.getAuthIDForValidToken(ctx, authIDFromRequest, "pwreset", tokenFromRequest)
+}
+
+func (r *MemoryVerificationTokenRepository) DeletePasswordResetTokensForAuthID(ctx context.Context, authID string) error {
+	return r.deleteTokensForAuthID(ctx, authID, "pwreset")
 }
 
 // Helper for tests or admin purposes, not part of the interface
 // Kept for potential internal use or testing, renamed for clarity.
-func (r *MemoryVerificationTokenRepository) GetTokenEntry(token string) (VerificationTokenEntry, bool) {
+func (r *MemoryVerificationTokenRepository) GetTokenEntry(authID, tokenType string) (VerificationTokenEntry, bool) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	entry, exists := r.tokens[token]
+	key := makeMemoryKey(authID, tokenType)
+	entry, exists := r.tokens[key]
 	return entry, exists
 }

@@ -29,11 +29,19 @@ func (h *SRPAuthHandler) CheckEmailExists(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
+	if req.AuthID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "AuthID (email) is required")
+	}
+
 	ctx := c.Request().Context()
 
 	isUserExists, err := h.SRPAuthService.CheckIfUserExists(ctx, *req)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Registration failed")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Server is unavailable")
+	}
+
+	if isUserExists {
+		return echo.NewHTTPError(http.StatusConflict, "This email is already in use")
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{"exists": isUserExists})
@@ -76,7 +84,7 @@ func (h *SRPAuthHandler) GenerateCodeAndSendActivationEmail(c echo.Context) erro
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "User not found")
 		}
-		if errors.Is(err, service.ErrUserAlreadyActivated) { // Assuming you have/will define this error in your service layer
+		if errors.Is(err, service.ErrUserAlreadyActivated) {
 			return echo.NewHTTPError(http.StatusConflict, "User is already activated")
 		}
 		// Log internal error details
@@ -98,13 +106,18 @@ func (h *SRPAuthHandler) ActivateAccount(c echo.Context) error {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "User not found")
 		}
+
+		if errors.Is(err, repository.ErrVerificationTokenNotFound) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid, expired, or already consumed activation code")
+		}
+
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to activate user")
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{"message": "User activated successfully"})
 }
 
-// AuthStep1 handles the first step of the SRP authentication flow
+// AuthStep1 handles the first step of the SRP authentication flow (user send authID, server send back B)
 func (h *SRPAuthHandler) AuthStep1(c echo.Context) error {
 	req := new(models.AuthStep1Request)
 	if err := c.Bind(req); err != nil {
@@ -116,7 +129,7 @@ func (h *SRPAuthHandler) AuthStep1(c echo.Context) error {
 	resp, err := h.SRPAuthService.ComputeB(ctx, *req)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			return echo.NewHTTPError(http.StatusNotFound, "User not found")
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid client credentials")
 		}
 
 		if errors.Is(err, repository.ErrUserNotActivated) {
@@ -132,7 +145,7 @@ func (h *SRPAuthHandler) AuthStep1(c echo.Context) error {
 
 // AuthStep2 handles the verification of the client's proof M1
 func (h *SRPAuthHandler) AuthStep2(c echo.Context) error {
-	req := new(models.AuthStep2Request) // Client sends M1 in this step
+	req := new(models.AuthStep2Request)
 	if err := c.Bind(req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
@@ -144,7 +157,7 @@ func (h *SRPAuthHandler) AuthStep2(c echo.Context) error {
 		if errors.Is(err, repository.ErrStateNotFound) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Authentication session expired or invalid")
 		}
-		if err.Error() == "client proof M1 verification failed" {
+		if errors.Is(err, service.ErrSRPAuthenticationFailed) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid client credentials")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "Authentication verification failed")
@@ -177,21 +190,20 @@ func (h *SRPAuthHandler) ValidatePasswordResetToken(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
-	if bindReq.Token == "" {
+	if bindReq.Token == "" { // Token is the 6-digit code
 		return echo.NewHTTPError(http.StatusBadRequest, "Token cannot be empty")
+	}
+	if bindReq.AuthID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "AuthID cannot be empty")
 	}
 
 	ctx := c.Request().Context()
 	resp, err := h.SRPAuthService.ValidatePasswordResetToken(ctx, *bindReq)
 
 	if err != nil {
-		// If err is not nil, it means validation failed or an unexpected error occurred.
-		// The service method ValidatePasswordResetToken ensures `resp` is non-nil
-		// with `IsValid: false` for token validation failures (e.g., token not found/expired).
 		if resp != nil && !resp.IsValid {
-			// Return 200 OK with the response body indicating IsValid: false.
 			// The client should check the IsValid field.
-			return c.JSON(http.StatusOK, resp)
+			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
 		// For other errors (e.g., service's own pre-check failures or unexpected issues where resp might be nil)
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -206,6 +218,10 @@ func (h *SRPAuthHandler) CompletePasswordReset(c echo.Context) error {
 	req := new(models.CompletePasswordResetRequest)
 	if err := c.Bind(req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+	// Basic validation for required fields in the handler
+	if req.AuthID == "" || req.Token == "" || req.NewSalt == "" || req.NewVerifier == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "AuthID, token, newSalt, and newVerifier are required")
 	}
 	ctx := c.Request().Context()
 	err := h.SRPAuthService.CompletePasswordReset(ctx, *req)

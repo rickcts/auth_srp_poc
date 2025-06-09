@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -20,29 +21,29 @@ func NewMemoryStateRepository() repository.StateRepository {
 	}
 }
 
-func (r *MemoryStateRepository) StoreAuthState(authID string, state models.AuthSessionState) error {
+func (r *MemoryStateRepository) StoreAuthState(ctx context.Context, authID string, state models.AuthSessionState) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.states[authID] = state
 	return nil
 }
 
-func (r *MemoryStateRepository) GetAuthState(authID string) (*models.AuthSessionState, error) {
+func (r *MemoryStateRepository) GetAuthState(ctx context.Context, authID string) (*models.AuthSessionState, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
 	state, exists := r.states[authID]
-	if !exists || time.Now().After(state.Expiry) {
+	if !exists || time.Now().UTC().After(state.Expiry) {
 		// Clean up expired state if found
 		if exists {
-			go r.DeleteAuthState(authID) // Delete in background
+			go r.DeleteAuthState(ctx, authID) // Delete in background
 		}
 		return nil, repository.ErrStateNotFound
 	}
 	return &state, nil
 }
 
-func (r *MemoryStateRepository) DeleteAuthState(authID string) error {
+func (r *MemoryStateRepository) DeleteAuthState(ctx context.Context, authID string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	delete(r.states, authID)

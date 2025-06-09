@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -44,6 +45,34 @@ func (uac *UserAuthCreate) SetAuthID(s string) *UserAuthCreate {
 	return uac
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (uac *UserAuthCreate) SetCreatedAt(t time.Time) *UserAuthCreate {
+	uac.mutation.SetCreatedAt(t)
+	return uac
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (uac *UserAuthCreate) SetNillableCreatedAt(t *time.Time) *UserAuthCreate {
+	if t != nil {
+		uac.SetCreatedAt(*t)
+	}
+	return uac
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (uac *UserAuthCreate) SetUpdatedAt(t time.Time) *UserAuthCreate {
+	uac.mutation.SetUpdatedAt(t)
+	return uac
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (uac *UserAuthCreate) SetNillableUpdatedAt(t *time.Time) *UserAuthCreate {
+	if t != nil {
+		uac.SetUpdatedAt(*t)
+	}
+	return uac
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uac *UserAuthCreate) SetUser(u *User) *UserAuthCreate {
 	return uac.SetUserID(u.ID)
@@ -56,6 +85,7 @@ func (uac *UserAuthCreate) Mutation() *UserAuthMutation {
 
 // Save creates the UserAuth in the database.
 func (uac *UserAuthCreate) Save(ctx context.Context) (*UserAuth, error) {
+	uac.defaults()
 	return withHooks(ctx, uac.sqlSave, uac.mutation, uac.hooks)
 }
 
@@ -81,6 +111,18 @@ func (uac *UserAuthCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (uac *UserAuthCreate) defaults() {
+	if _, ok := uac.mutation.CreatedAt(); !ok {
+		v := userauth.DefaultCreatedAt()
+		uac.mutation.SetCreatedAt(v)
+	}
+	if _, ok := uac.mutation.UpdatedAt(); !ok {
+		v := userauth.DefaultUpdatedAt()
+		uac.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (uac *UserAuthCreate) check() error {
 	if _, ok := uac.mutation.UserID(); !ok {
@@ -94,6 +136,12 @@ func (uac *UserAuthCreate) check() error {
 	}
 	if _, ok := uac.mutation.AuthID(); !ok {
 		return &ValidationError{Name: "auth_id", err: errors.New(`ent: missing required field "UserAuth.auth_id"`)}
+	}
+	if _, ok := uac.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "UserAuth.created_at"`)}
+	}
+	if _, ok := uac.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UserAuth.updated_at"`)}
 	}
 	if len(uac.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserAuth.user"`)}
@@ -136,6 +184,14 @@ func (uac *UserAuthCreate) createSpec() (*UserAuth, *sqlgraph.CreateSpec) {
 		_spec.SetField(userauth.FieldAuthID, field.TypeString, value)
 		_node.AuthID = value
 	}
+	if value, ok := uac.mutation.CreatedAt(); ok {
+		_spec.SetField(userauth.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := uac.mutation.UpdatedAt(); ok {
+		_spec.SetField(userauth.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if nodes := uac.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -174,6 +230,7 @@ func (uacb *UserAuthCreateBulk) Save(ctx context.Context) ([]*UserAuth, error) {
 	for i := range uacb.builders {
 		func(i int, root context.Context) {
 			builder := uacb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*UserAuthMutation)
 				if !ok {

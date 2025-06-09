@@ -4,13 +4,22 @@ import (
 	"crypto"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"github.com/tadglines/go-pkgs/crypto/srp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/microsoft"
 )
+
+type APPConfig struct {
+	Name            string
+	Port            string
+	JWTSecret       string
+	StateCookieName string
+}
 
 type SRPConfig struct {
 	// The set of supported groups are:
@@ -28,17 +37,17 @@ type SRPConfig struct {
 	//		stanford.4096
 	//		stanford.6144
 	//		stanford.8192
-	// Default to rfc5054.4096
-	// Default to rfc5054.4096
+	// Default to rfc5054.4096.
 	Group string
-	// Set the expiry time between srp exchange
-	AuthStateExpiry  time.Time
+	// AuthStateExpiry sets the expiry time for the SRP authentication state (e.g., "5m", "300s").
+	// This is the duration for which the server keeps temporary state during the SRP handshake.
+	AuthStateExpiry  time.Duration
 	HashingAlgorithm crypto.Hash
 }
 
 type SessionConfig struct {
-	AccessTokenDuration  time.Duration `mapstructure:"accessTokenDuration"`
-	RefreshTokenDuration time.Duration `mapstructure:"refreshTokenDuration"`
+	AccessTokenDuration time.Duration
+	ValidationDuration  time.Duration
 }
 
 type RedisSettings struct {
@@ -47,70 +56,106 @@ type RedisSettings struct {
 	DB       int
 }
 
-type SecurityConfig struct {
-	PasswordResetTokenExpiry time.Duration `mapstructure:"PASSWORD_RESET_TOKEN_EXPIRY"` // e.g., "15m"
+type DatabaseSettings struct {
+	DatabaseDriver string
+	// host=<host> port=<port> user=<user> dbname=<database> password=<pass> sslmode=<enable/disable>
+	DSN string
 }
 
 type SmtpConfig struct {
-	Host     string `mapstructure:"SMTP_HOST"`
-	Port     string `mapstructure:"SMTP_PORT"`
-	User     string `mapstructure:"SMTP_USER"`
-	Password string `mapstructure:"SMTP_PASSWORD"`
-	NOTLS    bool   `mapstructure:"SMTP_NOTLS"`
+	Host     string
+	Port     string
+	User     string
+	Password string
+	NOTLS    bool
 }
 
 type Config struct {
 	// Server port
-	Port           string
-	JWTSecret      string
-	SRP            SRPConfig
-	OAuthProviders map[string]*oauth2.Config
-	DatabaseDriver string
-	// host=<host> port=<port> user=<user> dbname=<database> password=<pass> sslmode=<enable/disable>
-	DatabaseSettings string
-	StateCookieName  string
-	RedisSettings    RedisSettings
-	SessionConfig    SessionConfig
-	SMTP             SmtpConfig     `mapstructure:",squash"`
-	Security         SecurityConfig `mapstructure:",squash"`
+	App           APPConfig
+	SRP           SRPConfig
+	OAuth         map[string]*oauth2.Config
+	Database      DatabaseSettings
+	RedisSettings *redis.Options
+	SessionConfig SessionConfig
+	SMTP          SmtpConfig
 }
 
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName(".env")
-	viper.SetConfigType("env")
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("./config")
 	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Set default values
+	viper.SetDefault("app.port", "8080")
+	viper.SetDefault("app.jwtSecret", "a_very_secret_key_change_me_in_config_yaml")
+	viper.SetDefault("app.stateCookieName", "my_oauth_state_cookie")
+
+	viper.SetDefault("srp.group", "rfc5054.4096")
+	viper.SetDefault("srp.authStateExpiry", "5m")
+	viper.SetDefault("srp.hashingAlgorithm", "SHA512")
+
+	viper.SetDefault("database.driver", "sqlite3")
+	viper.SetDefault("database.host", "localhost")
+	viper.SetDefault("database.port", 5432)
+	viper.SetDefault("database.user", "postgres")
+	viper.SetDefault("database.name", "app_db")
+	viper.SetDefault("database.pass", "password")
+	viper.SetDefault("database.sslMode", "disable")
+
+	viper.SetDefault("redis.address", "localhost:6379")
+	viper.SetDefault("redis.password", "")
+	viper.SetDefault("redis.db", 0)
+
+	viper.SetDefault("sessionConfig.accessTokenDuration", "1h")
+	viper.SetDefault("sessionConfig.refreshTokenDuration", "168h") // 7 days
+
+	viper.SetDefault("smtp.host", "")
+	viper.SetDefault("smtp.port", "587")
+	viper.SetDefault("smtp.user", "")
+	viper.SetDefault("smtp.password", "")
+	viper.SetDefault("smtp.noTls", false)
+
+	viper.SetDefault("security.passwordResetTokenExpiry", "15m")
+
+	viper.SetDefault("oauthProviders.microsoft.clientID", "")
+	viper.SetDefault("oauthProviders.microsoft.clientSecret", "")
+	viper.SetDefault("oauthProviders.microsoft.redirectURL", "http://localhost:8080/api/auth/oauth/microsoft/callback")
+	viper.SetDefault("oauthProviders.microsoft.scopes", []string{"openid", "profile", "email"})
+	viper.SetDefault("oauthProviders.microsoft.tenant", "common")
 
 	// Load configuration
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Println("Config file not found, using defaults and environment variables")
+			log.Println("Config file (config.yaml) not found, using defaults and environment variables.")
 		} else {
-			return nil, fmt.Errorf("failed to read config: %w", err)
+			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
 	// JWT Secret
-	jwtSecret := viper.GetString("JWT_SECRET")
-	if jwtSecret == "a_very_secret_key_change_me" {
-		fmt.Println("Warning: Using default JWT secret. Set JWT_SECRET environment variable or in config file.")
+	jwtSecret := viper.GetString("app.jwtSecret")
+	if jwtSecret == "a_very_secret_key_change_me_in_config_yaml" || jwtSecret == "a_very_secret_key_change_me" {
+		log.Println("Warning: Using default JWT secret. Set app.jwtSecret in your config.yaml or the JWT_SECRET environment variable.")
 	}
 
 	// SRP Configuration
-	srpGroup := viper.GetString("SRP_GROUP_BITS")
+	srpGroup := viper.GetString("srp.group")
 	if _, err := srp.GetGroup(srpGroup); err != nil {
+		originalGroup := srpGroup
 		srpGroup = "rfc5054.4096"
-		log.Printf("Invalid SRP group '%s', defaulting to '%s'", viper.GetString("SRP_GROUP_BITS"), srpGroup)
+		log.Printf("Invalid SRP group '%s' in srp.group, defaulting to '%s'", originalGroup, srpGroup)
 	}
 
-	expirySeconds := viper.GetInt("SRP_AUTH_STATE_EXPIRY_SECONDS")
-	if expirySeconds <= 0 {
-		expirySeconds = 300
+	srpAuthStateExpiryDuration := viper.GetDuration("srp.authStateExpiry")
+	if srpAuthStateExpiryDuration <= 0 {
+		log.Printf("Invalid or missing srp.authStateExpiry, defaulting to 5m.")
+		srpAuthStateExpiryDuration = 5 * time.Minute
 	}
-	srpAuthStateExpiry := time.Now().Add(time.Duration(expirySeconds) * time.Second)
 
-	hashingAlgorithmStr := viper.GetString("HASHING_ALGORITHM")
+	hashingAlgorithmStr := viper.GetString("srp.hashingAlgorithm")
 	var hashingAlgorithm crypto.Hash
 	switch hashingAlgorithmStr {
 	case "SHA1":
@@ -120,60 +165,82 @@ func LoadConfig() (*Config, error) {
 	case "SHA512":
 		hashingAlgorithm = crypto.SHA512
 	default:
+		originalAlgo := hashingAlgorithmStr
 		hashingAlgorithm = crypto.SHA512
-		log.Printf("Invalid hashing algorithm '%s', defaulting to SHA512", hashingAlgorithmStr)
+		log.Printf("Invalid hashing algorithm '%s' in srp.hashingAlgorithm, defaulting to SHA512", originalAlgo)
+	}
+
+	// Token Configuration
+	accessTokenDuration := viper.GetDuration("sessionConfig.accessTokenDuration")
+	if accessTokenDuration <= 0 {
+		log.Printf("Invalid or missing sessionConfig.accessTokenDuration, defaulting to 168h (7 days)")
+		accessTokenDuration = 1 * time.Hour
+	}
+
+	validationTokenExpiry := viper.GetDuration("security.validationDuration")
+	if validationTokenExpiry <= 0 {
+		log.Printf("Invalid or missing PASSWORD_RESET_TOKEN_EXPIRY, defaulting to 15m.")
+		validationTokenExpiry = 15 * time.Minute
 	}
 
 	// Database Configuration
-	databaseDriver := viper.GetString("DATABASE_DRIVER")
-	var databaseSettings string
+	databaseDriver := viper.GetString("database.driver")
+	var DSN string
 	if databaseDriver == "sqlite3" {
-		databaseSettings = "file:ent?mode=memory&cache=shared&_fk=1"
+		DSN = "file:ent?mode=memory&cache=shared&_fk=1"
 	} else {
-		databaseSettings = fmt.Sprintf(
+		DSN = fmt.Sprintf(
 			"host=%s port=%d user=%s dbname=%s password=%s sslmode=%s",
-			viper.GetString("DB_HOST"),
-			viper.GetInt("DB_PORT"),
-			viper.GetString("DB_USER"),
-			viper.GetString("DB_NAME"),
-			viper.GetString("DB_PASS"),
-			viper.GetString("DB_SSL_MODE"),
+			viper.GetString("database.host"),
+			viper.GetInt("database.port"),
+			viper.GetString("database.user"),
+			viper.GetString("database.name"),
+			viper.GetString("database.pass"),
+			viper.GetString("database.sslMode"),
 		)
 	}
 
 	// OAuth Configuration
 	oauthProviders := make(map[string]*oauth2.Config)
 	oauthProviders["MICROSOFT"] = &oauth2.Config{
-		ClientID:     viper.GetString("MICROSOFT_CLIENT_ID"),
-		ClientSecret: viper.GetString("MICROSOFT_CLIENT_SECRET"),
-		RedirectURL:  viper.GetString("MICROSOFT_REDIRECT_URL"),
-		Scopes:       []string{"openid", "profile", "email", "offline_access", "User.Read"},
-		Endpoint:     microsoft.AzureADEndpoint("consumers"),
+		ClientID:     viper.GetString("oauthProviders.microsoft.clientID"),
+		ClientSecret: viper.GetString("oauthProviders.microsoft.clientSecret"),
+		RedirectURL:  viper.GetString("oauthProviders.microsoft.redirectURL"),
+		Scopes:       viper.GetStringSlice("oauthProviders.microsoft.scopes"),
+		Endpoint:     microsoft.AzureADEndpoint(viper.GetString("oauthProviders.microsoft.tenant")),
 	}
 
 	return &Config{
-		Port:      viper.GetString("APP_PORT"),
-		JWTSecret: jwtSecret,
+		App: APPConfig{
+			Name:      viper.GetString("app.name"),
+			Port:      viper.GetString("app.port"),
+			JWTSecret: jwtSecret,
+		},
 		SRP: SRPConfig{
 			Group:            srpGroup,
-			AuthStateExpiry:  srpAuthStateExpiry,
+			AuthStateExpiry:  srpAuthStateExpiryDuration,
 			HashingAlgorithm: hashingAlgorithm,
 		},
-		OAuthProviders:   oauthProviders,
-		DatabaseSettings: databaseSettings,
-		DatabaseDriver:   databaseDriver,
-		StateCookieName:  viper.GetString("STATE_COOKIE_NAME"),
-		RedisSettings: RedisSettings{
-			Address:  viper.GetString("REDIS_ADDRESS"),
-			Password: viper.GetString("REDIS_PASSWORD"),
-			DB:       viper.GetInt("REDIS_DB"),
+		OAuth: oauthProviders,
+		Database: DatabaseSettings{
+			DatabaseDriver: databaseDriver,
+			DSN:            DSN,
+		},
+		RedisSettings: &redis.Options{
+			Addr:     viper.GetString("redis.address"),
+			Password: viper.GetString("redis.password"),
+			DB:       viper.GetInt("redis.db"),
+		},
+		SessionConfig: SessionConfig{
+			AccessTokenDuration: accessTokenDuration,
+			ValidationDuration:  validationTokenExpiry,
 		},
 		SMTP: SmtpConfig{
-			Host:     viper.GetString("SMTP_HOST"),
-			Port:     viper.GetString("SMTP_PORT"),
-			User:     viper.GetString("SMTP_USER"),
-			Password: viper.GetString("SMTP_PASSWORD"),
-			NOTLS:    viper.GetBool("SMTP_NOTLS"),
+			Host:     viper.GetString("smtp.host"),
+			Port:     viper.GetString("smtp.port"),
+			User:     viper.GetString("smtp.user"),
+			Password: viper.GetString("smtp.password"),
+			NOTLS:    viper.GetBool("smtp.noTls"),
 		},
 	}, nil
 }

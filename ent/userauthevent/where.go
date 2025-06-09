@@ -70,9 +70,9 @@ func Host(v string) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldEQ(FieldHost, v))
 }
 
-// Timestamp applies equality check predicate on the "timestamp" field. It's identical to TimestampEQ.
-func Timestamp(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldEQ(FieldTimestamp, v))
+// UnixTs applies equality check predicate on the "unix_ts" field. It's identical to UnixTsEQ.
+func UnixTs(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldEQ(FieldUnixTs, v))
 }
 
 // Ns applies equality check predicate on the "ns" field. It's identical to NsEQ.
@@ -83,6 +83,16 @@ func Ns(v int64) predicate.UserAuthEvent {
 // ErrorCode applies equality check predicate on the "error_code" field. It's identical to ErrorCodeEQ.
 func ErrorCode(v int) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldEQ(FieldErrorCode, v))
+}
+
+// CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
+func CreatedAt(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldEQ(FieldCreatedAt, v))
+}
+
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
@@ -210,44 +220,44 @@ func HostContainsFold(v string) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldContainsFold(FieldHost, v))
 }
 
-// TimestampEQ applies the EQ predicate on the "timestamp" field.
-func TimestampEQ(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldEQ(FieldTimestamp, v))
+// UnixTsEQ applies the EQ predicate on the "unix_ts" field.
+func UnixTsEQ(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldEQ(FieldUnixTs, v))
 }
 
-// TimestampNEQ applies the NEQ predicate on the "timestamp" field.
-func TimestampNEQ(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldNEQ(FieldTimestamp, v))
+// UnixTsNEQ applies the NEQ predicate on the "unix_ts" field.
+func UnixTsNEQ(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldNEQ(FieldUnixTs, v))
 }
 
-// TimestampIn applies the In predicate on the "timestamp" field.
-func TimestampIn(vs ...time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldIn(FieldTimestamp, vs...))
+// UnixTsIn applies the In predicate on the "unix_ts" field.
+func UnixTsIn(vs ...time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldIn(FieldUnixTs, vs...))
 }
 
-// TimestampNotIn applies the NotIn predicate on the "timestamp" field.
-func TimestampNotIn(vs ...time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldNotIn(FieldTimestamp, vs...))
+// UnixTsNotIn applies the NotIn predicate on the "unix_ts" field.
+func UnixTsNotIn(vs ...time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldNotIn(FieldUnixTs, vs...))
 }
 
-// TimestampGT applies the GT predicate on the "timestamp" field.
-func TimestampGT(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldGT(FieldTimestamp, v))
+// UnixTsGT applies the GT predicate on the "unix_ts" field.
+func UnixTsGT(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldGT(FieldUnixTs, v))
 }
 
-// TimestampGTE applies the GTE predicate on the "timestamp" field.
-func TimestampGTE(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldGTE(FieldTimestamp, v))
+// UnixTsGTE applies the GTE predicate on the "unix_ts" field.
+func UnixTsGTE(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldGTE(FieldUnixTs, v))
 }
 
-// TimestampLT applies the LT predicate on the "timestamp" field.
-func TimestampLT(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldLT(FieldTimestamp, v))
+// UnixTsLT applies the LT predicate on the "unix_ts" field.
+func UnixTsLT(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldLT(FieldUnixTs, v))
 }
 
-// TimestampLTE applies the LTE predicate on the "timestamp" field.
-func TimestampLTE(v time.Time) predicate.UserAuthEvent {
-	return predicate.UserAuthEvent(sql.FieldLTE(FieldTimestamp, v))
+// UnixTsLTE applies the LTE predicate on the "unix_ts" field.
+func UnixTsLTE(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldLTE(FieldUnixTs, v))
 }
 
 // NsEQ applies the EQ predicate on the "ns" field.
@@ -328,6 +338,86 @@ func ErrorCodeLT(v int) predicate.UserAuthEvent {
 // ErrorCodeLTE applies the LTE predicate on the "error_code" field.
 func ErrorCodeLTE(v int) predicate.UserAuthEvent {
 	return predicate.UserAuthEvent(sql.FieldLTE(FieldErrorCode, v))
+}
+
+// CreatedAtEQ applies the EQ predicate on the "created_at" field.
+func CreatedAtEQ(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldEQ(FieldCreatedAt, v))
+}
+
+// CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
+func CreatedAtNEQ(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldNEQ(FieldCreatedAt, v))
+}
+
+// CreatedAtIn applies the In predicate on the "created_at" field.
+func CreatedAtIn(vs ...time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldIn(FieldCreatedAt, vs...))
+}
+
+// CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
+func CreatedAtNotIn(vs ...time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldNotIn(FieldCreatedAt, vs...))
+}
+
+// CreatedAtGT applies the GT predicate on the "created_at" field.
+func CreatedAtGT(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldGT(FieldCreatedAt, v))
+}
+
+// CreatedAtGTE applies the GTE predicate on the "created_at" field.
+func CreatedAtGTE(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldGTE(FieldCreatedAt, v))
+}
+
+// CreatedAtLT applies the LT predicate on the "created_at" field.
+func CreatedAtLT(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldLT(FieldCreatedAt, v))
+}
+
+// CreatedAtLTE applies the LTE predicate on the "created_at" field.
+func CreatedAtLTE(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.UserAuthEvent {
+	return predicate.UserAuthEvent(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

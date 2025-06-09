@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -46,6 +47,34 @@ func (umc *UserMFACreate) SetNillableParams(s *string) *UserMFACreate {
 	return umc
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (umc *UserMFACreate) SetCreatedAt(t time.Time) *UserMFACreate {
+	umc.mutation.SetCreatedAt(t)
+	return umc
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (umc *UserMFACreate) SetNillableCreatedAt(t *time.Time) *UserMFACreate {
+	if t != nil {
+		umc.SetCreatedAt(*t)
+	}
+	return umc
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (umc *UserMFACreate) SetUpdatedAt(t time.Time) *UserMFACreate {
+	umc.mutation.SetUpdatedAt(t)
+	return umc
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (umc *UserMFACreate) SetNillableUpdatedAt(t *time.Time) *UserMFACreate {
+	if t != nil {
+		umc.SetUpdatedAt(*t)
+	}
+	return umc
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (umc *UserMFACreate) SetUser(u *User) *UserMFACreate {
 	return umc.SetUserID(u.ID)
@@ -58,6 +87,7 @@ func (umc *UserMFACreate) Mutation() *UserMFAMutation {
 
 // Save creates the UserMFA in the database.
 func (umc *UserMFACreate) Save(ctx context.Context) (*UserMFA, error) {
+	umc.defaults()
 	return withHooks(ctx, umc.sqlSave, umc.mutation, umc.hooks)
 }
 
@@ -83,6 +113,18 @@ func (umc *UserMFACreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (umc *UserMFACreate) defaults() {
+	if _, ok := umc.mutation.CreatedAt(); !ok {
+		v := usermfa.DefaultCreatedAt()
+		umc.mutation.SetCreatedAt(v)
+	}
+	if _, ok := umc.mutation.UpdatedAt(); !ok {
+		v := usermfa.DefaultUpdatedAt()
+		umc.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (umc *UserMFACreate) check() error {
 	if _, ok := umc.mutation.UserID(); !ok {
@@ -90,6 +132,12 @@ func (umc *UserMFACreate) check() error {
 	}
 	if _, ok := umc.mutation.MfaMethod(); !ok {
 		return &ValidationError{Name: "mfa_method", err: errors.New(`ent: missing required field "UserMFA.mfa_method"`)}
+	}
+	if _, ok := umc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "UserMFA.created_at"`)}
+	}
+	if _, ok := umc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UserMFA.updated_at"`)}
 	}
 	if len(umc.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserMFA.user"`)}
@@ -127,6 +175,14 @@ func (umc *UserMFACreate) createSpec() (*UserMFA, *sqlgraph.CreateSpec) {
 	if value, ok := umc.mutation.Params(); ok {
 		_spec.SetField(usermfa.FieldParams, field.TypeString, value)
 		_node.Params = value
+	}
+	if value, ok := umc.mutation.CreatedAt(); ok {
+		_spec.SetField(usermfa.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := umc.mutation.UpdatedAt(); ok {
+		_spec.SetField(usermfa.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := umc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -166,6 +222,7 @@ func (umcb *UserMFACreateBulk) Save(ctx context.Context) ([]*UserMFA, error) {
 	for i := range umcb.builders {
 		func(i int, root context.Context) {
 			builder := umcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*UserMFAMutation)
 				if !ok {

@@ -28,6 +28,10 @@ type UserRepository interface {
 	// UpdateUserSRPAuth updates the salt and verifier for an SRP user.
 	// It should return ErrUserNotFound if the user does not exist.
 	UpdateUserSRPAuth(ctx context.Context, authID string, newSaltHex string, newVerifierHex string) error
+
+	UpdateUserInfoByAuthID(ctx context.Context, authID string, displayName string) error
+
+	DeleteUser(ctx context.Context, authID string) error
 }
 
 // Common errors

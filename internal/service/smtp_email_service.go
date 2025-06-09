@@ -76,8 +76,8 @@ func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, 
 
 	subject := "Password Reset Request"
 	// resetContextInfo could be your app name or a brief instruction.
-	body := fmt.Sprintf("Hello,\n\nYou requested a password reset for %s.\n\nYour 6-digit reset code is: %s\n\nThis code will expire in 15 minutes.\n\nIf you did not request this, please ignore this email.", resetContextInfo, resetCode)
-	date := time.Now().Format(time.RFC1123Z)
+	body := fmt.Sprintf("Hello,\n\nYou requested a password reset for %s.\n\nYour 6-digit reset code is: %s\n\nThis code will expire in 5 minutes.\n\nIf you did not request this, please ignore this email.", resetContextInfo, resetCode)
+	date := time.Now().UTC().Format(time.RFC1123Z)
 	smtpAddr := s.cfg.Host + ":" + s.cfg.Port
 
 	err := SendToMail(s.cfg.User, s.cfg.Password, smtpAddr, s.cfg.Host, subject, date, body, "text", s.cfg.User, []string{toEmail}, nil, nil)
@@ -98,8 +98,8 @@ func (s *SMTPEmailService) SendActivationEmail(ctx context.Context, toEmail, act
 	}
 
 	subject := fmt.Sprintf("Activate Your Account for %s", appName)
-	body := fmt.Sprintf("Hello,\n\nThank you for registering with %s.\n\nYour account activation code is: %s\n\nThis code will expire in approximately 15 minutes.\n\nPlease use this code to activate your account.\n\nIf you did not request this, please ignore this email.", appName, activationCode)
-	date := time.Now().Format(time.RFC1123Z)
+	body := fmt.Sprintf("Hello,\n\nThank you for registering with %s.\n\nYour account activation code is: %s\n\nThis code will expire in approximately 5 minutes.\n\nPlease use this code to activate your account.\n\nIf you did not request this, please ignore this email.", appName, activationCode)
+	date := time.Now().UTC().Format(time.RFC1123Z)
 	smtpAddr := s.cfg.Host + ":" + s.cfg.Port
 
 	err := SendToMail(s.cfg.User, s.cfg.Password, smtpAddr, s.cfg.Host, subject, date, body, "text", s.cfg.User, []string{toEmail}, nil, nil)

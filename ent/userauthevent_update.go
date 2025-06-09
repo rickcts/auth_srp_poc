@@ -78,16 +78,16 @@ func (uaeu *UserAuthEventUpdate) SetNillableHost(s *string) *UserAuthEventUpdate
 	return uaeu
 }
 
-// SetTimestamp sets the "timestamp" field.
-func (uaeu *UserAuthEventUpdate) SetTimestamp(t time.Time) *UserAuthEventUpdate {
-	uaeu.mutation.SetTimestamp(t)
+// SetUnixTs sets the "unix_ts" field.
+func (uaeu *UserAuthEventUpdate) SetUnixTs(t time.Time) *UserAuthEventUpdate {
+	uaeu.mutation.SetUnixTs(t)
 	return uaeu
 }
 
-// SetNillableTimestamp sets the "timestamp" field if the given value is not nil.
-func (uaeu *UserAuthEventUpdate) SetNillableTimestamp(t *time.Time) *UserAuthEventUpdate {
+// SetNillableUnixTs sets the "unix_ts" field if the given value is not nil.
+func (uaeu *UserAuthEventUpdate) SetNillableUnixTs(t *time.Time) *UserAuthEventUpdate {
 	if t != nil {
-		uaeu.SetTimestamp(*t)
+		uaeu.SetUnixTs(*t)
 	}
 	return uaeu
 }
@@ -134,6 +134,12 @@ func (uaeu *UserAuthEventUpdate) AddErrorCode(i int) *UserAuthEventUpdate {
 	return uaeu
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (uaeu *UserAuthEventUpdate) SetUpdatedAt(t time.Time) *UserAuthEventUpdate {
+	uaeu.mutation.SetUpdatedAt(t)
+	return uaeu
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uaeu *UserAuthEventUpdate) SetUser(u *User) *UserAuthEventUpdate {
 	return uaeu.SetUserID(u.ID)
@@ -152,6 +158,7 @@ func (uaeu *UserAuthEventUpdate) ClearUser() *UserAuthEventUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (uaeu *UserAuthEventUpdate) Save(ctx context.Context) (int, error) {
+	uaeu.defaults()
 	return withHooks(ctx, uaeu.sqlSave, uaeu.mutation, uaeu.hooks)
 }
 
@@ -174,6 +181,14 @@ func (uaeu *UserAuthEventUpdate) Exec(ctx context.Context) error {
 func (uaeu *UserAuthEventUpdate) ExecX(ctx context.Context) {
 	if err := uaeu.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uaeu *UserAuthEventUpdate) defaults() {
+	if _, ok := uaeu.mutation.UpdatedAt(); !ok {
+		v := userauthevent.UpdateDefaultUpdatedAt()
+		uaeu.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -206,8 +221,8 @@ func (uaeu *UserAuthEventUpdate) sqlSave(ctx context.Context) (n int, err error)
 	if value, ok := uaeu.mutation.Host(); ok {
 		_spec.SetField(userauthevent.FieldHost, field.TypeString, value)
 	}
-	if value, ok := uaeu.mutation.Timestamp(); ok {
-		_spec.SetField(userauthevent.FieldTimestamp, field.TypeTime, value)
+	if value, ok := uaeu.mutation.UnixTs(); ok {
+		_spec.SetField(userauthevent.FieldUnixTs, field.TypeTime, value)
 	}
 	if value, ok := uaeu.mutation.Ns(); ok {
 		_spec.SetField(userauthevent.FieldNs, field.TypeInt64, value)
@@ -220,6 +235,9 @@ func (uaeu *UserAuthEventUpdate) sqlSave(ctx context.Context) (n int, err error)
 	}
 	if value, ok := uaeu.mutation.AddedErrorCode(); ok {
 		_spec.AddField(userauthevent.FieldErrorCode, field.TypeInt, value)
+	}
+	if value, ok := uaeu.mutation.UpdatedAt(); ok {
+		_spec.SetField(userauthevent.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uaeu.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -319,16 +337,16 @@ func (uaeuo *UserAuthEventUpdateOne) SetNillableHost(s *string) *UserAuthEventUp
 	return uaeuo
 }
 
-// SetTimestamp sets the "timestamp" field.
-func (uaeuo *UserAuthEventUpdateOne) SetTimestamp(t time.Time) *UserAuthEventUpdateOne {
-	uaeuo.mutation.SetTimestamp(t)
+// SetUnixTs sets the "unix_ts" field.
+func (uaeuo *UserAuthEventUpdateOne) SetUnixTs(t time.Time) *UserAuthEventUpdateOne {
+	uaeuo.mutation.SetUnixTs(t)
 	return uaeuo
 }
 
-// SetNillableTimestamp sets the "timestamp" field if the given value is not nil.
-func (uaeuo *UserAuthEventUpdateOne) SetNillableTimestamp(t *time.Time) *UserAuthEventUpdateOne {
+// SetNillableUnixTs sets the "unix_ts" field if the given value is not nil.
+func (uaeuo *UserAuthEventUpdateOne) SetNillableUnixTs(t *time.Time) *UserAuthEventUpdateOne {
 	if t != nil {
-		uaeuo.SetTimestamp(*t)
+		uaeuo.SetUnixTs(*t)
 	}
 	return uaeuo
 }
@@ -375,6 +393,12 @@ func (uaeuo *UserAuthEventUpdateOne) AddErrorCode(i int) *UserAuthEventUpdateOne
 	return uaeuo
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (uaeuo *UserAuthEventUpdateOne) SetUpdatedAt(t time.Time) *UserAuthEventUpdateOne {
+	uaeuo.mutation.SetUpdatedAt(t)
+	return uaeuo
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uaeuo *UserAuthEventUpdateOne) SetUser(u *User) *UserAuthEventUpdateOne {
 	return uaeuo.SetUserID(u.ID)
@@ -406,6 +430,7 @@ func (uaeuo *UserAuthEventUpdateOne) Select(field string, fields ...string) *Use
 
 // Save executes the query and returns the updated UserAuthEvent entity.
 func (uaeuo *UserAuthEventUpdateOne) Save(ctx context.Context) (*UserAuthEvent, error) {
+	uaeuo.defaults()
 	return withHooks(ctx, uaeuo.sqlSave, uaeuo.mutation, uaeuo.hooks)
 }
 
@@ -428,6 +453,14 @@ func (uaeuo *UserAuthEventUpdateOne) Exec(ctx context.Context) error {
 func (uaeuo *UserAuthEventUpdateOne) ExecX(ctx context.Context) {
 	if err := uaeuo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uaeuo *UserAuthEventUpdateOne) defaults() {
+	if _, ok := uaeuo.mutation.UpdatedAt(); !ok {
+		v := userauthevent.UpdateDefaultUpdatedAt()
+		uaeuo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -477,8 +510,8 @@ func (uaeuo *UserAuthEventUpdateOne) sqlSave(ctx context.Context) (_node *UserAu
 	if value, ok := uaeuo.mutation.Host(); ok {
 		_spec.SetField(userauthevent.FieldHost, field.TypeString, value)
 	}
-	if value, ok := uaeuo.mutation.Timestamp(); ok {
-		_spec.SetField(userauthevent.FieldTimestamp, field.TypeTime, value)
+	if value, ok := uaeuo.mutation.UnixTs(); ok {
+		_spec.SetField(userauthevent.FieldUnixTs, field.TypeTime, value)
 	}
 	if value, ok := uaeuo.mutation.Ns(); ok {
 		_spec.SetField(userauthevent.FieldNs, field.TypeInt64, value)
@@ -491,6 +524,9 @@ func (uaeuo *UserAuthEventUpdateOne) sqlSave(ctx context.Context) (_node *UserAu
 	}
 	if value, ok := uaeuo.mutation.AddedErrorCode(); ok {
 		_spec.AddField(userauthevent.FieldErrorCode, field.TypeInt, value)
+	}
+	if value, ok := uaeuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(userauthevent.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uaeuo.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

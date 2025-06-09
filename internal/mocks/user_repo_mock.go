@@ -45,3 +45,13 @@ func (m *MockUserRepository) UpdateActivationCode(ctx context.Context, authID st
 	args := m.Called(ctx, authID, code, expiry)
 	return args.Error(0)
 }
+
+func (m *MockUserRepository) UpdateUserInfoByAuthID(ctx context.Context, authID string, displayName string) error {
+	args := m.Called(ctx, authID, displayName)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) DeleteUser(ctx context.Context, authID string) error {
+	args := m.Called(ctx, authID)
+	return args.Error(0)
+}

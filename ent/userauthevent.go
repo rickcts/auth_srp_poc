@@ -24,12 +24,16 @@ type UserAuthEvent struct {
 	AuthProvider int64 `json:"auth_provider,omitempty"`
 	// Host holds the value of the "host" field.
 	Host string `json:"host,omitempty"`
-	// Timestamp holds the value of the "timestamp" field.
-	Timestamp time.Time `json:"timestamp,omitempty"`
+	// UnixTs holds the value of the "unix_ts" field.
+	UnixTs time.Time `json:"unix_ts,omitempty"`
 	// Ns holds the value of the "ns" field.
 	Ns int64 `json:"ns,omitempty"`
 	// ErrorCode holds the value of the "error_code" field.
 	ErrorCode int `json:"error_code,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserAuthEventQuery when eager-loading is set.
 	Edges        UserAuthEventEdges `json:"edges"`
@@ -65,7 +69,7 @@ func (*UserAuthEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case userauthevent.FieldHost:
 			values[i] = new(sql.NullString)
-		case userauthevent.FieldTimestamp:
+		case userauthevent.FieldUnixTs, userauthevent.FieldCreatedAt, userauthevent.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -106,11 +110,11 @@ func (uae *UserAuthEvent) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				uae.Host = value.String
 			}
-		case userauthevent.FieldTimestamp:
+		case userauthevent.FieldUnixTs:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
+				return fmt.Errorf("unexpected type %T for field unix_ts", values[i])
 			} else if value.Valid {
-				uae.Timestamp = value.Time
+				uae.UnixTs = value.Time
 			}
 		case userauthevent.FieldNs:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -123,6 +127,18 @@ func (uae *UserAuthEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field error_code", values[i])
 			} else if value.Valid {
 				uae.ErrorCode = int(value.Int64)
+			}
+		case userauthevent.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				uae.CreatedAt = value.Time
+			}
+		case userauthevent.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				uae.UpdatedAt = value.Time
 			}
 		default:
 			uae.selectValues.Set(columns[i], values[i])
@@ -174,14 +190,20 @@ func (uae *UserAuthEvent) String() string {
 	builder.WriteString("host=")
 	builder.WriteString(uae.Host)
 	builder.WriteString(", ")
-	builder.WriteString("timestamp=")
-	builder.WriteString(uae.Timestamp.Format(time.ANSIC))
+	builder.WriteString("unix_ts=")
+	builder.WriteString(uae.UnixTs.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("ns=")
 	builder.WriteString(fmt.Sprintf("%v", uae.Ns))
 	builder.WriteString(", ")
 	builder.WriteString("error_code=")
 	builder.WriteString(fmt.Sprintf("%v", uae.ErrorCode))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(uae.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(uae.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

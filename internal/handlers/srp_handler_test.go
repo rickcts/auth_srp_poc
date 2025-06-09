@@ -16,6 +16,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/router"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -183,11 +184,11 @@ func TestAuthHandler_AuthStep1(t *testing.T) {
 		resp := performRequest(app, "POST", "/api/auth/srp/login/email", step1Req)
 
 		defer resp.Body.Close()
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		var errResp *echo.HTTPError
 		err := json.NewDecoder(resp.Body).Decode(&errResp)
 		require.NoError(t, err)
-		assert.Equal(t, "User not found", errResp.Message)
+		assert.Equal(t, "Invalid client credentials", errResp.Message)
 		mockAuthService.AssertExpectations(t)
 	})
 
@@ -289,8 +290,8 @@ func TestAuthHandler_AuthStep2(t *testing.T) {
 		mockAuthService := new(mocks.MockSRPAuthService)
 		app := setupTestApp(mockAuthService)
 
-		serviceErr := errors.New("client proof M1 verification failed")
-		mockAuthService.On("VerifyClientProof", step2Req).Return(nil, serviceErr).Once()
+		// Use the actual error instance that the handler checks for
+		mockAuthService.On("VerifyClientProof", step2Req).Return(nil, service.ErrSRPAuthenticationFailed).Once()
 
 		resp := performRequest(app, "POST", "/api/auth/srp/login/proof", step2Req)
 

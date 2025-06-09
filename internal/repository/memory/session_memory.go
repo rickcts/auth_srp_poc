@@ -50,7 +50,7 @@ func (r *MemorySessionRepository) cleanupExpiredSessions() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	now := time.Now()
+	now := time.Now().UTC()
 	expiredIDs := []string{}
 
 	// IDentify expired sessions

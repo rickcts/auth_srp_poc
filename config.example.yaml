@@ -1,0 +1,46 @@
+app:
+  port: "8080"
+  jwtSecret: "example-jwt-secret-replace-this-in-config.yaml"
+  stateCookieName: "my_oauth_state_cookie"
+
+srp:
+  group: "rfc5054.4096"
+  authStateExpiry: "300s"
+  hashingAlgorithm: "SHA512"
+
+database:
+  driver: "sqlite3" # "postgres"
+  host: "localhost"
+  port: 5432
+  user: "db_user"
+  name: "db_name"
+  pass: "db_password_replace_this"
+  sslMode: "disable"
+
+redis:
+  address: "localhost:6379"
+  password: ""
+  db: 0
+
+sessionConfig:
+  accessTokenDuration: "1h"
+  refreshTokenDuration: "168h"
+
+smtp:
+  host: "smtp.example.com"
+  port: "587"
+  user: "user@example.com"
+  password: "smtp_password_replace_this"
+  noTls: false
+
+security:
+  passwordResetTokenExpiry: "15m"
+
+oauthProviders:
+  MICROSOFT:
+    clientID: "MICROSOFT_CLIENT_ID_REPLACE_THIS"
+    clientSecret: "MICROSOFT_CLIENT_SECRET_REPLACE_THIS"
+    redirectURL: "http://localhost:8080/api/auth/oauth/microsoft/callback"
+    scopes : ["openid", "profile", "email", "offline_access", "User.Read"]
+    endpoint: "consumers"
+

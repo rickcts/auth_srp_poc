@@ -21,7 +21,7 @@ func NewTokenService(secret string) *JWTService {
 
 // GenerateToken creates a new JWT for a user
 func (s *JWTService) GenerateToken(authID string) (string, time.Time, error) {
-	exp := time.Now().Add(time.Hour * 1) // Expiration time (1 hour)
+	exp := time.Now().UTC().Add(time.Hour * 1) // Expiration time (1 hour)
 	claims := jwt.MapClaims{
 		"sub": authID,
 		"iss": "scs-auth-server",

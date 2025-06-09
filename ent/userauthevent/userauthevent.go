@@ -3,6 +3,8 @@
 package userauthevent
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -18,12 +20,16 @@ const (
 	FieldAuthProvider = "auth_provider"
 	// FieldHost holds the string denoting the host field in the database.
 	FieldHost = "host"
-	// FieldTimestamp holds the string denoting the timestamp field in the database.
-	FieldTimestamp = "timestamp"
+	// FieldUnixTs holds the string denoting the unix_ts field in the database.
+	FieldUnixTs = "unix_ts"
 	// FieldNs holds the string denoting the ns field in the database.
 	FieldNs = "ns"
 	// FieldErrorCode holds the string denoting the error_code field in the database.
 	FieldErrorCode = "error_code"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// Table holds the table name of the userauthevent in the database.
@@ -43,9 +49,11 @@ var Columns = []string{
 	FieldUserID,
 	FieldAuthProvider,
 	FieldHost,
-	FieldTimestamp,
+	FieldUnixTs,
 	FieldNs,
 	FieldErrorCode,
+	FieldCreatedAt,
+	FieldUpdatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -57,6 +65,19 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
+
+var (
+	// DefaultUnixTs holds the default value on creation for the "unix_ts" field.
+	DefaultUnixTs func() time.Time
+	// DefaultNs holds the default value on creation for the "ns" field.
+	DefaultNs func() int64
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
+)
 
 // OrderOption defines the ordering options for the UserAuthEvent queries.
 type OrderOption func(*sql.Selector)
@@ -81,9 +102,9 @@ func ByHost(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldHost, opts...).ToFunc()
 }
 
-// ByTimestamp orders the results by the timestamp field.
-func ByTimestamp(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTimestamp, opts...).ToFunc()
+// ByUnixTs orders the results by the unix_ts field.
+func ByUnixTs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUnixTs, opts...).ToFunc()
 }
 
 // ByNs orders the results by the ns field.
@@ -94,6 +115,16 @@ func ByNs(opts ...sql.OrderTermOption) OrderOption {
 // ByErrorCode orders the results by the error_code field.
 func ByErrorCode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldErrorCode, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

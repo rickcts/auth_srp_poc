@@ -5,6 +5,7 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -23,6 +24,10 @@ type UserMFA struct {
 	MfaMethod string `json:"mfa_method,omitempty"`
 	// Params holds the value of the "params" field.
 	Params string `json:"params,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserMFAQuery when eager-loading is set.
 	Edges        UserMFAEdges `json:"edges"`
@@ -58,6 +63,8 @@ func (*UserMFA) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case usermfa.FieldMfaMethod, usermfa.FieldParams:
 			values[i] = new(sql.NullString)
+		case usermfa.FieldCreatedAt, usermfa.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -96,6 +103,18 @@ func (um *UserMFA) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field params", values[i])
 			} else if value.Valid {
 				um.Params = value.String
+			}
+		case usermfa.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				um.CreatedAt = value.Time
+			}
+		case usermfa.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				um.UpdatedAt = value.Time
 			}
 		default:
 			um.selectValues.Set(columns[i], values[i])
@@ -146,6 +165,12 @@ func (um *UserMFA) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("params=")
 	builder.WriteString(um.Params)
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(um.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(um.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

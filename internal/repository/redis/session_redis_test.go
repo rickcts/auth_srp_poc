@@ -48,8 +48,8 @@ func TestRedisSessionRepository_StoreSession(t *testing.T) {
 			SessionID: "sess123",
 			UserID:    1,
 			Username:  "user1",
-			Expiry:    time.Now().Add(1 * time.Hour),
-			CreatedAt: time.Now(),
+			Expiry:    time.Now().UTC().Add(1 * time.Hour),
+			CreatedAt: time.Now().UTC(),
 		}
 
 		err := repo.StoreSession(ctx, session)
@@ -85,11 +85,11 @@ func TestRedisSessionRepository_StoreSession(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid session data")
 
-		err = repo.StoreSession(ctx, &models.Session{UserID: 1, Expiry: time.Now().Add(1 * time.Hour)}) // Missing SessionID
+		err = repo.StoreSession(ctx, &models.Session{UserID: 1, Expiry: time.Now().UTC().Add(1 * time.Hour)}) // Missing SessionID
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid session data")
 
-		err = repo.StoreSession(ctx, &models.Session{SessionID: "sess1", Expiry: time.Now().Add(1 * time.Hour)}) // Missing UserID
+		err = repo.StoreSession(ctx, &models.Session{SessionID: "sess1", Expiry: time.Now().UTC().Add(1 * time.Hour)}) // Missing UserID
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid session data")
 	})
@@ -101,7 +101,7 @@ func TestRedisSessionRepository_StoreSession(t *testing.T) {
 		session := &models.Session{
 			SessionID: "sessExpired",
 			UserID:    2,
-			Expiry:    time.Now().Add(-1 * time.Hour), // Expired
+			Expiry:    time.Now().UTC().Add(-1 * time.Hour), // Expired
 		}
 
 		err := repo.StoreSession(ctx, session)
@@ -126,7 +126,7 @@ func TestRedisSessionRepository_StoreSession(t *testing.T) {
 		session := &models.Session{
 			SessionID: "sessPipeErr",
 			UserID:    3,
-			Expiry:    time.Now().Add(1 * time.Hour),
+			Expiry:    time.Now().UTC().Add(1 * time.Hour),
 		}
 		mr.Close() // Close to cause pipeline error
 		err := repo.StoreSession(ctx, session)
@@ -145,7 +145,7 @@ func TestRedisSessionRepository_GetSession(t *testing.T) {
 		session := &models.Session{
 			SessionID: "getSess1",
 			UserID:    10,
-			Expiry:    time.Now().Add(1 * time.Hour),
+			Expiry:    time.Now().UTC().Add(1 * time.Hour),
 		}
 		jsonData, _ := json.Marshal(session)
 		mr.Set(makeSessionKey(session.SessionID), string(jsonData))
@@ -196,7 +196,7 @@ func TestRedisSessionRepository_GetSession(t *testing.T) {
 		session := &models.Session{
 			SessionID: "expiredSessInStore",
 			UserID:    11,
-			Expiry:    time.Now().Add(-1 * time.Hour), // Expired
+			Expiry:    time.Now().UTC().Add(-1 * time.Hour), // Expired
 		}
 		jsonData, _ := json.Marshal(session)
 		sessionKey := makeSessionKey(session.SessionID)
@@ -227,7 +227,7 @@ func TestRedisSessionRepository_GetSession(t *testing.T) {
 		session := &models.Session{
 			SessionID: "expiredSessInStoreUID0",
 			UserID:    0, // UserID is 0
-			Expiry:    time.Now().Add(-1 * time.Hour),
+			Expiry:    time.Now().UTC().Add(-1 * time.Hour),
 		}
 		jsonData, _ := json.Marshal(session)
 		sessionKey := makeSessionKey(session.SessionID)
@@ -255,7 +255,7 @@ func TestRedisSessionRepository_DeleteSession(t *testing.T) {
 		repo, mr, _ := newTestRedisSessionRepo(t)
 		defer mr.Close()
 
-		session := &models.Session{SessionID: "delSess1", UserID: 20, Expiry: time.Now().Add(time.Hour)}
+		session := &models.Session{SessionID: "delSess1", UserID: 20, Expiry: time.Now().UTC().Add(time.Hour)}
 		jsonData, _ := json.Marshal(session)
 		sessionKey := makeSessionKey(session.SessionID)
 		userKey := makeUserSessionsKey(session.UserID)
@@ -335,7 +335,7 @@ func TestRedisSessionRepository_DeleteSession(t *testing.T) {
 		defer mr.Close()
 
 		// Test deletion of a session that has UserID 0.
-		session := &models.Session{SessionID: "delSessUID0", UserID: 0, Expiry: time.Now().Add(time.Hour)}
+		session := &models.Session{SessionID: "delSessUID0", UserID: 0, Expiry: time.Now().UTC().Add(time.Hour)}
 		jsonData, _ := json.Marshal(session)
 		sessionKey := makeSessionKey(session.SessionID)
 		userKeyForZero := makeUserSessionsKey(0) // "user_sessions:0"
@@ -365,14 +365,14 @@ func TestRedisSessionRepository_ExtendSession(t *testing.T) {
 		defer mr.Close()
 
 		sessionID := "extSess1"
-		initialExpiry := time.Now().Add(30 * time.Minute)
+		initialExpiry := time.Now().UTC().Add(30 * time.Minute)
 		session := &models.Session{SessionID: sessionID, UserID: 30, Expiry: initialExpiry}
 		jsonData, _ := json.Marshal(session)
 		sessionKey := makeSessionKey(sessionID)
 		mr.Set(sessionKey, string(jsonData))
 		mr.SetTTL(sessionKey, 30*time.Minute)
 
-		newExpiry := time.Now().Add(2 * time.Hour)
+		newExpiry := time.Now().UTC().Add(2 * time.Hour)
 		err := repo.ExtendSession(ctx, sessionID, newExpiry)
 		require.NoError(t, err)
 
@@ -388,7 +388,7 @@ func TestRedisSessionRepository_ExtendSession(t *testing.T) {
 	t.Run("NotFound", func(t *testing.T) {
 		repo, mr, _ := newTestRedisSessionRepo(t)
 		defer mr.Close()
-		err := repo.ExtendSession(ctx, "nonExistentExtSess", time.Now().Add(time.Hour))
+		err := repo.ExtendSession(ctx, "nonExistentExtSess", time.Now().UTC().Add(time.Hour))
 		require.ErrorIs(t, err, repository.ErrSessionNotFound)
 	})
 
@@ -397,12 +397,12 @@ func TestRedisSessionRepository_ExtendSession(t *testing.T) {
 		defer mr.Close()
 
 		sessionID := "extSessExpired"
-		session := &models.Session{SessionID: sessionID, UserID: 31, Expiry: time.Now().Add(-time.Hour)} // Expired
+		session := &models.Session{SessionID: sessionID, UserID: 31, Expiry: time.Now().UTC().Add(-time.Hour)} // Expired
 		jsonData, _ := json.Marshal(session)
 		sessionKey := makeSessionKey(sessionID)
 		mr.Set(sessionKey, string(jsonData))
 
-		err := repo.ExtendSession(ctx, sessionID, time.Now().Add(time.Hour))
+		err := repo.ExtendSession(ctx, sessionID, time.Now().UTC().Add(time.Hour))
 		require.ErrorIs(t, err, repository.ErrSessionNotFound)
 
 		exists := mr.Exists(sessionKey)
@@ -414,12 +414,12 @@ func TestRedisSessionRepository_ExtendSession(t *testing.T) {
 		// No defer mr.Close()
 
 		sessionID := "extSessSetErr"
-		session := &models.Session{SessionID: sessionID, UserID: 32, Expiry: time.Now().Add(time.Hour)}
+		session := &models.Session{SessionID: sessionID, UserID: 32, Expiry: time.Now().UTC().Add(time.Hour)}
 		jsonData, _ := json.Marshal(session)
 		mr.Set(makeSessionKey(sessionID), string(jsonData))
 
 		mr.Close() // Induce error on Set
-		err := repo.ExtendSession(ctx, sessionID, time.Now().Add(2*time.Hour))
+		err := repo.ExtendSession(ctx, sessionID, time.Now().UTC().Add(2*time.Hour))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "redis GET failed during extend") // GET fails first when mr is closed
 	})
@@ -437,7 +437,7 @@ func TestRedisSessionRepository_DeleteUserSessions(t *testing.T) {
 		for i := 0; i < numSessions; i++ {
 			sessID := fmt.Sprintf("userSess-%d-%d", userID, i+excludeOffset)
 			sessionIDs = append(sessionIDs, sessID)
-			session := &models.Session{SessionID: sessID, UserID: userID, Expiry: time.Now().Add(time.Hour)}
+			session := &models.Session{SessionID: sessID, UserID: userID, Expiry: time.Now().UTC().Add(time.Hour)}
 			jsonData, _ := json.Marshal(session)
 
 			mr.Set(makeSessionKey(sessID), string(jsonData))

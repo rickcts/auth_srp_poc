@@ -7,15 +7,17 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func SetupUserRoutes(e *echo.Echo, authHandler *handlers.JWTAuthHandler, cfg *config.Config) {
+func SetupUserRoutes(e *echo.Echo, authHandler *handlers.UserHandler, cfg *config.Config) {
 	api := e.Group("/api/auth/user")
 
-	api.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	api.Use(middleware.JWTMiddleware(cfg.App.JWTSecret))
 
 	api.GET("/sessions", authHandler.GetUserSessions)
 	api.POST("/verify", authHandler.VerifyToken)
 	api.POST("/logout", authHandler.Logout)
 	api.POST("/logout-all", authHandler.LogoutAllSessions)
+	api.PUT("user", authHandler.UpdateUser)
+	api.DELETE("user", authHandler.DeleteUser)
 }
 
 func SetupSRPRoutes(e *echo.Echo, authHandler *handlers.SRPAuthHandler, cfg *config.Config) {
@@ -32,8 +34,8 @@ func SetupSRPRoutes(e *echo.Echo, authHandler *handlers.SRPAuthHandler, cfg *con
 	api.POST("/password/reset/validate", authHandler.ValidatePasswordResetToken) // Validate if the reset token is valid
 	api.POST("/password/reset/complete", authHandler.CompletePasswordReset)      // Used reset token and new salt and verifier to set a new password
 
-	api.POST("/password/change/initiate", authHandler.InitiatePasswordChangeVerification, middleware.JWTMiddleware(cfg.JWTSecret))
-	api.POST("/password/change/confirm", authHandler.ConfirmPasswordChange, middleware.JWTMiddleware(cfg.JWTSecret))
+	api.POST("/password/change/initiate", authHandler.InitiatePasswordChangeVerification, middleware.JWTMiddleware(cfg.App.JWTSecret)) // need to ask client to check step 2
+	api.POST("/password/change/confirm", authHandler.ConfirmPasswordChange, middleware.JWTMiddleware(cfg.App.JWTSecret))               // need to do logout-all for the client
 }
 
 func SetupOAuthRoutes(e *echo.Echo, oauthHandler *handlers.OAuthHandler) {

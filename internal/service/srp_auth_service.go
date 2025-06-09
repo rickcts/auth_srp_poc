@@ -151,12 +151,12 @@ func (s *SRPAuthService) ComputeB(ctx context.Context, req models.AuthStep1Reque
 
 	state := models.AuthSessionState{
 		AuthID: req.AuthID,
-		Salt:   salt,                      // This is 's'
-		Server: server,                    // SRP server instance
-		B:      B,                         // This is 'B'
-		Expiry: s.cfg.SRP.AuthStateExpiry, // time.Time
+		Salt:   salt,   // This is 's'
+		Server: server, // SRP server instance
+		B:      B,      // This is 'B'
+		Expiry: time.Now().UTC().Add(s.cfg.SRP.AuthStateExpiry),
 	}
-	s.stateRepo.StoreAuthState(req.AuthID, state) // Assuming StoreAuthState handles expiry correctly
+	s.stateRepo.StoreAuthState(ctx, req.AuthID, state)
 
 	// Return salt and B
 	response := &models.AuthStep1Response{
@@ -173,7 +173,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 		req.AuthID, req.ClientA, req.ClientProofM1)
 
 	// 1. Retrieve stored state (secret 'b'/'secret2', verifier 'V')
-	session, err := s.stateRepo.GetAuthState(req.AuthID)
+	session, err := s.stateRepo.GetAuthState(ctx, req.AuthID)
 	if err != nil {
 		log.Printf("[AuthService.VerifyClientProof] ERROR: Failed to retrieve auth state for user '%s': %v", req.AuthID, err)
 		// s.stateRepo.DeleteAuthState(req.AuthID)                                    // Uncomment if needed
@@ -213,19 +213,16 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	log.Printf("[AuthService.VerifyClientProof] Computed key for user '%s': %s", req.AuthID, hex.EncodeToString(k))
 
 	log.Printf("[AuthService.VerifyClientProof] Set ClientA on SRP server for user '%s'", req.AuthID)
-	isValID := server.VerifyClientAuthenticator(ClientM1)
-	if !isValID {
-		// This means the client's M1 dID not match the server's calculation! Authentication fails.
+	isValid := server.VerifyClientAuthenticator(ClientM1)
+	if !isValid {
 		log.Printf("[AuthService.VerifyClientProof] ERROR: Client proof M1 verification failed for user '%s': %v", req.AuthID, err)
-		// Security ConsIDeration: AvoID leaking *why* it failed if possible in production error messages.
 		// Clean up state after failed attempt
-		s.stateRepo.DeleteAuthState(req.AuthID)                       // Add Delete method to repo if needed
-		return nil, fmt.Errorf("client proof M1 verification failed") // Generic error to client
+		s.stateRepo.DeleteAuthState(ctx, req.AuthID)
+		return nil, ErrSRPAuthenticationFailed
 	}
-	// M1 verification successful!
 	log.Printf("[AuthService.VerifyClientProof] SUCCESS: Client proof M1 verified for user '%s'", req.AuthID)
 
-	err = s.stateRepo.DeleteAuthState(req.AuthID)
+	err = s.stateRepo.DeleteAuthState(ctx, req.AuthID)
 	if err != nil {
 		log.Printf("[AuthService.VerifyClientProof] WARN: Failed to delete auth state for user '%s' after successful auth: %v", req.AuthID, err)
 	} else {
@@ -237,7 +234,6 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 		log.Printf("[AuthService.VerifyClientProof] ERROR: Failed to get user info for user '%s': %v", req.AuthID, err)
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
-	authID := userInfo.AuthID
 
 	// Generate session token
 	sessionTokenString, sessionTokenExpiry, err := s.tokenSvc.GenerateToken(req.AuthID)
@@ -250,7 +246,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	sessionRecord := &models.Session{
 		SessionID: sessionTokenString,
 		UserID:    userInfo.ID,
-		AuthID:    authID,
+		AuthID:    req.AuthID,
 		Expiry:    sessionTokenExpiry,
 		CreatedAt: time.Now().UTC(),
 	}
@@ -318,9 +314,9 @@ func (s *SRPAuthService) InitiatePasswordChangeVerification(ctx context.Context,
 		Salt:   currentSaltBytes, // Current salt
 		Server: serverSession,    // SRP server instance for current password
 		B:      serverBBytes,
-		Expiry: time.Now().Add(s.cfg.Security.PasswordResetTokenExpiry), // Reuse or define a new config for this expiry
+		Expiry: time.Now().UTC().Add(s.cfg.SessionConfig.ValidationDuration),
 	}
-	s.stateRepo.StoreAuthState(stateKey, state)
+	s.stateRepo.StoreAuthState(ctx, stateKey, state)
 
 	log.Printf("[AuthService.InitiatePasswordChangeVerification] SUCCESS for user '%s'. Returning current salt and ServerB.", authID)
 	return &models.InitiateChangePasswordResponse{
@@ -341,17 +337,17 @@ func (s *SRPAuthService) ConfirmPasswordChange(ctx context.Context, authID strin
 	log.Printf("[AuthService.ConfirmPasswordChange] Attempting for user '%s'", authID)
 
 	stateKey := "pwdchange:" + authID
-	storedState, err := s.stateRepo.GetAuthState(stateKey)
+	storedState, err := s.stateRepo.GetAuthState(ctx, stateKey)
 	if err != nil {
 		log.Printf("[AuthService.ConfirmPasswordChange] ERROR: Failed to retrieve auth state for user '%s': %v", authID, err)
-		s.stateRepo.DeleteAuthState(stateKey) // Clean up if retrieval failed (e.g. expired)
+		s.stateRepo.DeleteAuthState(ctx, stateKey) // Clean up if retrieval failed (e.g. expired)
 		return fmt.Errorf("password change session expired or invalid: %w", err)
 	}
 
 	serverSession := storedState.Server
 	if serverSession == nil {
 		log.Printf("[AuthService.ConfirmPasswordChange] ERROR: Nil server session in stored state for user '%s'", authID)
-		s.stateRepo.DeleteAuthState(stateKey)
+		s.stateRepo.DeleteAuthState(ctx, stateKey)
 		return fmt.Errorf("internal error: invalid password change session state")
 	}
 
@@ -361,17 +357,17 @@ func (s *SRPAuthService) ConfirmPasswordChange(ctx context.Context, authID strin
 	_, err = serverSession.ComputeKey(clientABytes)
 	if err != nil {
 		log.Printf("[AuthService.ConfirmPasswordChange] ERROR: Failed to compute key for current password for user '%s': %v", authID, err)
-		s.stateRepo.DeleteAuthState(stateKey)
+		s.stateRepo.DeleteAuthState(ctx, stateKey)
 		return fmt.Errorf("current password verification failed (key computation): %w", ErrSRPAuthenticationFailed)
 	}
 
 	if !serverSession.VerifyClientAuthenticator(clientM1Bytes) {
 		log.Printf("[AuthService.ConfirmPasswordChange] ERROR: Current password M1 verification failed for user '%s'", authID)
-		s.stateRepo.DeleteAuthState(stateKey)
+		s.stateRepo.DeleteAuthState(ctx, stateKey)
 		return fmt.Errorf("current password verification failed: %w", ErrSRPAuthenticationFailed)
 	}
 
-	s.stateRepo.DeleteAuthState(stateKey) // Current password verified, clean up state
+	s.stateRepo.DeleteAuthState(ctx, stateKey) // Current password verified, clean up state
 	log.Printf("[AuthService.ConfirmPasswordChange] Current password verified for user '%s'. Proceeding to update password.", authID)
 
 	err = s.userRepo.UpdateUserSRPAuth(ctx, authID, req.NewSalt, req.NewVerifier)
@@ -382,7 +378,7 @@ func (s *SRPAuthService) ConfirmPasswordChange(ctx context.Context, authID strin
 
 	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
 	if err == nil && userInfo != nil {
-		s.sessionRepo.DeleteUserSessions(ctx, userInfo.ID, "") // Invalidate all sessions
+		s.sessionRepo.DeleteUserSessions(ctx, userInfo.ID) // Invalidate all sessions
 		log.Printf("[AuthService.ConfirmPasswordChange] All active sessions for user '%s' (ID: %d) have been invalidated.", authID, userInfo.ID)
 	} else {
 		log.Printf("[AuthService.ConfirmPasswordChange] WARN: Could not retrieve user info for '%s' to invalidate sessions: %v", authID, err)
@@ -418,8 +414,11 @@ func (s *SRPAuthService) InitiatePasswordReset(ctx context.Context, req models.I
 		return fmt.Errorf("failed to initiate password reset") // Internal error
 	}
 
-	// Ensure PasswordResetTokenExpiry is configured, e.g., 15 minutes
-	expiry := time.Now().UTC().Add(s.cfg.Security.PasswordResetTokenExpiry)
+	activationExpiry := s.cfg.SessionConfig.ValidationDuration
+	if activationExpiry == 0 {
+		activationExpiry = 5 * time.Minute // Default to 5 minutes if not configured
+	}
+	expiry := time.Now().UTC().Add(activationExpiry)
 
 	err = s.verificationTokenRepo.StorePasswordResetToken(ctx, req.AuthID, resetCode, expiry)
 	if err != nil {
@@ -442,12 +441,15 @@ func (s *SRPAuthService) InitiatePasswordReset(ctx context.Context, req models.I
 // without consuming it.
 func (s *SRPAuthService) ValidatePasswordResetToken(ctx context.Context, req models.ValidatePasswordResetTokenRequest) (*models.ValidatePasswordResetTokenResponse, error) {
 	if req.Token == "" {
-		return nil, fmt.Errorf("token cannot be empty")
+		return &models.ValidatePasswordResetTokenResponse{IsValid: false}, fmt.Errorf("token cannot be empty")
+	}
+	if req.AuthID == "" {
+		return &models.ValidatePasswordResetTokenResponse{IsValid: false}, fmt.Errorf("authID cannot be empty")
 	}
 
-	log.Printf("[AuthService.ValidatePasswordResetToken] Attempting to validate reset token: %s", req.Token)
+	log.Printf("[AuthService.ValidatePasswordResetToken] Attempting to validate reset token '%s' for authID '%s'", req.Token, req.AuthID)
 
-	authID, err := s.verificationTokenRepo.GetAuthIDForValidPasswordResetToken(ctx, req.Token)
+	authID, err := s.verificationTokenRepo.GetAuthIDForValidPasswordResetToken(ctx, req.AuthID, req.Token)
 	if err != nil {
 		log.Printf("[AuthService.ValidatePasswordResetToken] Validation failed for token '%s': %v", req.Token, err)
 		return &models.ValidatePasswordResetTokenResponse{IsValid: false}, fmt.Errorf("invalid or expired password reset token: %w", err)
@@ -463,13 +465,16 @@ func (s *SRPAuthService) ValidatePasswordResetToken(ctx context.Context, req mod
 // CompletePasswordReset completes the password reset flow.
 // It re-validates and consumes the token before updating the password.
 func (s *SRPAuthService) CompletePasswordReset(ctx context.Context, req models.CompletePasswordResetRequest) error {
-	if req.Token == "" || req.NewSalt == "" || req.NewVerifier == "" {
-		return fmt.Errorf("token, new salt, and new verifier cannot be empty")
+	if req.AuthID == "" || req.Token == "" || req.NewSalt == "" || req.NewVerifier == "" {
+		return fmt.Errorf("authID, token, new salt, and new verifier cannot be empty")
 	}
 
-	log.Printf("[AuthService.CompletePasswordReset] Attempting to complete password reset with code: %s", req.Token)
+	log.Printf("[AuthService.CompletePasswordReset] Attempting to complete password reset for authID '%s' with code: %s", req.AuthID, req.Token)
 
-	authID, err := s.verificationTokenRepo.ValidateAndConsumePasswordResetToken(ctx, req.Token)
+	// ValidateAndConsumePasswordResetToken now expects authID as input.
+	// It will return the same authID if the token is valid for that user and consumes it.
+	// We use req.AuthID as the first argument.
+	authID, err := s.verificationTokenRepo.ValidateAndConsumePasswordResetToken(ctx, req.AuthID, req.Token)
 	if err != nil {
 		log.Printf("[AuthService.CompletePasswordReset] ERROR: Invalid, expired, or already consumed reset token '%s': %v", req.Token, err)
 		return fmt.Errorf("invalid, expired, or already consumed password reset token: %w", err)
@@ -526,9 +531,9 @@ func (s *SRPAuthService) GenerateCodeAndSendActivationEmail(ctx context.Context,
 		return fmt.Errorf("failed to generate activation code: %w", err)
 	}
 
-	activationExpiry := s.cfg.Security.PasswordResetTokenExpiry
+	activationExpiry := s.cfg.SessionConfig.ValidationDuration
 	if activationExpiry == 0 {
-		activationExpiry = 15 * time.Minute // Default to 15 minutes if not configured
+		activationExpiry = 5 * time.Minute // Default to 55 minutes if not configured
 	}
 	expiry := time.Now().UTC().Add(activationExpiry)
 
@@ -537,7 +542,7 @@ func (s *SRPAuthService) GenerateCodeAndSendActivationEmail(ctx context.Context,
 		return fmt.Errorf("failed to store activation code: %w", err)
 	}
 
-	appName := "Your Application" // Assuming AppName is available in config
+	appName := s.cfg.App.Name
 	if err := s.emailSvc.SendActivationEmail(ctx, req.AuthID, activationCode, appName); err != nil {
 		log.Printf("[AuthService.GenerateCodeAndSendActivationEmail] ERROR: Failed to send activation email to '%s': %v", req.AuthID, err)
 		return fmt.Errorf("failed to send activation email: %w", err)
@@ -551,26 +556,28 @@ func (s *SRPAuthService) ActivateUser(ctx context.Context, req models.ActivateUs
 	if req.AuthID == "" || req.Code == "" {
 		return errors.New("authID and activation code cannot be empty")
 	}
-	log.Printf("[AuthService.ActivateAccount] Attempting to activate user '%s' with code: %s", req.AuthID, req.Code)
+	log.Printf("[AuthService.ActivateUser] Attempting to activate user '%s' with code: %s", req.AuthID, req.Code)
 
-	authID, err := s.verificationTokenRepo.ValidateAndConsumeActivationToken(ctx, req.Code)
+	// ValidateAndConsumeActivationToken now expects authID as input.
+	// It will return the same authID if the token is valid for that user and consumes it.
+	// We use req.AuthID as the first argument.
+	validatedAuthID, err := s.verificationTokenRepo.ValidateAndConsumeActivationToken(ctx, req.AuthID, req.Code)
 	if err != nil {
-		log.Printf("[AuthService.ActivateAccount] ERROR: Invalid, expired, or already consumed activation code for '%s': %v", req.AuthID, err)
+		log.Printf("[AuthService.ActivateUser] ERROR: Invalid, expired, or already consumed activation code '%s' for authID '%s': %v", req.Code, req.AuthID, err)
 		return fmt.Errorf("invalid, expired, or already consumed activation code: %w", err)
 	}
 
-	log.Printf("[AuthService.ActivateAccount] Token validated and consumed for authID '%s'. Activating account.", authID)
-	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
+	log.Printf("[AuthService.ActivateUser] Token validated and consumed for authID '%s'. Activating account.", validatedAuthID)
+	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, validatedAuthID)
 	if err != nil {
-		log.Printf("[AuthService.ActivateAccount] ERROR: Failed to get user info for '%s': %v", authID, err)
 		return fmt.Errorf("failed to retrieve user information: %w", err)
 	}
 	err = s.userRepo.ActivateUser(ctx, userInfo.ID)
 	if err != nil {
-		log.Printf("[AuthService.ActivateAccount] ERROR: Failed to activate user '%s': %v", authID, err)
+		log.Printf("[AuthService.ActivateUser] ERROR: Failed to activate user '%s': %v", validatedAuthID, err)
 		return fmt.Errorf("failed to activate user: %w", err)
 	}
 
-	log.Printf("[AuthService.ActivateAccount] SUCCESS: Account activated for user '%s'", authID)
+	log.Printf("[AuthService.ActivateUser] SUCCESS: Account activated for user '%s'", validatedAuthID)
 	return nil
 }

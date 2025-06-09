@@ -33,12 +33,12 @@ func (h *OAuthHandler) Login(c echo.Context) error {
 	state := uuid.NewString()
 
 	cookie := new(http.Cookie)
-	cookie.Name = h.Config.StateCookieName
+	cookie.Name = h.Config.App.StateCookieName
 	cookie.Value = state
-	cookie.Expires = time.Now().Add(10 * time.Minute) // Short expiry
-	cookie.HttpOnly = true                            // Prevent client-side script access
-	cookie.Secure = c.Scheme() == "https"             // Set Secure flag if using HTTPS
-	cookie.SameSite = http.SameSiteLaxMode            // Lax is usually sufficient for OAuth redirects
+	cookie.Expires = time.Now().UTC().Add(10 * time.Minute) // Short expiry
+	cookie.HttpOnly = true                                  // Prevent client-side script access
+	cookie.Secure = c.Scheme() == "https"                   // Set Secure flag if using HTTPS
+	cookie.SameSite = http.SameSiteLaxMode                  // Lax is usually sufficient for OAuth redirects
 	c.SetCookie(cookie)
 
 	authURL := h.OAuthService.GetAuthCodeURL(state)
@@ -51,7 +51,7 @@ func (h *OAuthHandler) Login(c echo.Context) error {
 func (h *OAuthHandler) Callback(c echo.Context) error {
 	// --- State Verification (CSRF Protection) ---
 	queryState := c.QueryParam("state")
-	cookieStateCookie, err := c.Cookie(h.Config.StateCookieName)
+	cookieStateCookie, err := c.Cookie(h.Config.App.StateCookieName)
 	var cookieStateValue string
 	if err == nil && cookieStateCookie != nil {
 		cookieStateValue = cookieStateCookie.Value
@@ -59,9 +59,9 @@ func (h *OAuthHandler) Callback(c echo.Context) error {
 
 	// Clear the state cookie immediately after reading
 	clearCookie := new(http.Cookie)
-	clearCookie.Name = h.Config.StateCookieName
+	clearCookie.Name = h.Config.App.StateCookieName
 	clearCookie.Value = ""
-	clearCookie.Expires = time.Now().Add(-1 * time.Hour) // Expire immediately
+	clearCookie.Expires = time.Now().UTC().Add(-1 * time.Hour) // Expire immediately
 	clearCookie.HttpOnly = true
 	clearCookie.Secure = c.Scheme() == "https"
 	clearCookie.SameSite = http.SameSiteLaxMode

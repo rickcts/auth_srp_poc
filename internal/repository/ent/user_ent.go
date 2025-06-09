@@ -140,3 +140,38 @@ func (r *EntUserRepository) UpdateUserSRPAuth(ctx context.Context, authID string
 	}
 	return nil
 }
+
+func (r *EntUserRepository) UpdateUserInfoByAuthID(ctx context.Context, authID string, displayName string) error {
+	_, err := r.client.User.
+		Update().
+		Where(user.HasUserAuthWith(userauth.AuthIDEQ(authID))).
+		SetDisplayName(displayName).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to update user info: %w", err)
+	}
+	return nil
+}
+
+func (r *EntUserRepository) DeleteUser(ctx context.Context, authID string) error {
+	_, err := r.client.User.
+		Delete().
+		Where(user.HasUserAuthWith(userauth.AuthIDEQ(authID))).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+	return nil
+}
+
+func (r *EntUserRepository) StoreAuthEvent(ctx context.Context, host string, errorCode int) error {
+	_, err := r.client.UserAuthEvent.
+		Create().
+		SetHost(host).
+		SetErrorCode(errorCode).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to store auth event: %w", err)
+	}
+	return nil
+}

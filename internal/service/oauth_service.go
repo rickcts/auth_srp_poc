@@ -31,7 +31,7 @@ func NewMSOAuthService(cfg *config.Config, userRepo repository.UserRepository) *
 	return &OAuthService{
 		userRepo:    userRepo,
 		cfg:         cfg,
-		oAuthConfig: cfg.OAuthProviders["MICROSOFT"],
+		oAuthConfig: cfg.OAuth["MICROSOFT"],
 		api:         "https://graph.microsoft.com/v1.0/me",
 	}
 }
@@ -86,7 +86,7 @@ func (s *OAuthService) VerifyToken(ctx context.Context, oauth2Token *oauth2.Toke
 		return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
 	}
 	config := &oidc.Config{
-		ClientID: s.cfg.OAuthProviders["MICROSOFT"].ClientID,
+		ClientID: s.cfg.OAuth["MICROSOFT"].ClientID,
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -76,6 +77,12 @@ func (umu *UserMFAUpdate) ClearParams() *UserMFAUpdate {
 	return umu
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (umu *UserMFAUpdate) SetUpdatedAt(t time.Time) *UserMFAUpdate {
+	umu.mutation.SetUpdatedAt(t)
+	return umu
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (umu *UserMFAUpdate) SetUser(u *User) *UserMFAUpdate {
 	return umu.SetUserID(u.ID)
@@ -94,6 +101,7 @@ func (umu *UserMFAUpdate) ClearUser() *UserMFAUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (umu *UserMFAUpdate) Save(ctx context.Context) (int, error) {
+	umu.defaults()
 	return withHooks(ctx, umu.sqlSave, umu.mutation, umu.hooks)
 }
 
@@ -116,6 +124,14 @@ func (umu *UserMFAUpdate) Exec(ctx context.Context) error {
 func (umu *UserMFAUpdate) ExecX(ctx context.Context) {
 	if err := umu.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (umu *UserMFAUpdate) defaults() {
+	if _, ok := umu.mutation.UpdatedAt(); !ok {
+		v := usermfa.UpdateDefaultUpdatedAt()
+		umu.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -147,6 +163,9 @@ func (umu *UserMFAUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if umu.mutation.ParamsCleared() {
 		_spec.ClearField(usermfa.FieldParams, field.TypeString)
+	}
+	if value, ok := umu.mutation.UpdatedAt(); ok {
+		_spec.SetField(usermfa.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if umu.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -245,6 +264,12 @@ func (umuo *UserMFAUpdateOne) ClearParams() *UserMFAUpdateOne {
 	return umuo
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (umuo *UserMFAUpdateOne) SetUpdatedAt(t time.Time) *UserMFAUpdateOne {
+	umuo.mutation.SetUpdatedAt(t)
+	return umuo
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (umuo *UserMFAUpdateOne) SetUser(u *User) *UserMFAUpdateOne {
 	return umuo.SetUserID(u.ID)
@@ -276,6 +301,7 @@ func (umuo *UserMFAUpdateOne) Select(field string, fields ...string) *UserMFAUpd
 
 // Save executes the query and returns the updated UserMFA entity.
 func (umuo *UserMFAUpdateOne) Save(ctx context.Context) (*UserMFA, error) {
+	umuo.defaults()
 	return withHooks(ctx, umuo.sqlSave, umuo.mutation, umuo.hooks)
 }
 
@@ -298,6 +324,14 @@ func (umuo *UserMFAUpdateOne) Exec(ctx context.Context) error {
 func (umuo *UserMFAUpdateOne) ExecX(ctx context.Context) {
 	if err := umuo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (umuo *UserMFAUpdateOne) defaults() {
+	if _, ok := umuo.mutation.UpdatedAt(); !ok {
+		v := usermfa.UpdateDefaultUpdatedAt()
+		umuo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -346,6 +380,9 @@ func (umuo *UserMFAUpdateOne) sqlSave(ctx context.Context) (_node *UserMFA, err 
 	}
 	if umuo.mutation.ParamsCleared() {
 		_spec.ClearField(usermfa.FieldParams, field.TypeString)
+	}
+	if value, ok := umuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(usermfa.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if umuo.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -31,6 +31,8 @@ var (
 		{Name: "api_path", Type: field.TypeString, Size: 255},
 		{Name: "api_path_extras", Type: field.TypeString, Size: 2147483647},
 		{Name: "response_code", Type: field.TypeInt},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserAccessEventsTable holds the schema information for the "user_access_events" table.
@@ -41,7 +43,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "user_access_events_users_userAccessEvent",
-				Columns:    []*schema.Column{UserAccessEventsColumns[6]},
+				Columns:    []*schema.Column{UserAccessEventsColumns[8]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -53,6 +55,8 @@ var (
 		{Name: "auth_extras", Type: field.TypeString, Size: 2147483647},
 		{Name: "auth_provider", Type: field.TypeString},
 		{Name: "auth_id", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserAuthsTable holds the schema information for the "user_auths" table.
@@ -63,7 +67,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "user_auths_users_userAuth",
-				Columns:    []*schema.Column{UserAuthsColumns[4]},
+				Columns:    []*schema.Column{UserAuthsColumns[6]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -74,9 +78,11 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "auth_provider", Type: field.TypeInt64},
 		{Name: "host", Type: field.TypeString},
-		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "unix_ts", Type: field.TypeTime},
 		{Name: "ns", Type: field.TypeInt64},
 		{Name: "error_code", Type: field.TypeInt},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserAuthEventsTable holds the schema information for the "user_auth_events" table.
@@ -87,7 +93,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "user_auth_events_users_userAuthEvent",
-				Columns:    []*schema.Column{UserAuthEventsColumns[6]},
+				Columns:    []*schema.Column{UserAuthEventsColumns[8]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -98,6 +104,8 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "mfa_method", Type: field.TypeString},
 		{Name: "params", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// UserMfAsTable holds the schema information for the "user_mf_as" table.
@@ -108,7 +116,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "user_mf_as_users_userMFA",
-				Columns:    []*schema.Column{UserMfAsColumns[3]},
+				Columns:    []*schema.Column{UserMfAsColumns[5]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

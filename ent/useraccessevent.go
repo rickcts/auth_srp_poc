@@ -5,6 +5,7 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -29,6 +30,10 @@ type UserAccessEvent struct {
 	APIPathExtras string `json:"api_path_extras,omitempty"`
 	// ResponseCode holds the value of the "response_code" field.
 	ResponseCode int `json:"response_code,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserAccessEventQuery when eager-loading is set.
 	Edges        UserAccessEventEdges `json:"edges"`
@@ -64,6 +69,8 @@ func (*UserAccessEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case useraccessevent.FieldHostFrom, useraccessevent.FieldAPIMethod, useraccessevent.FieldAPIPath, useraccessevent.FieldAPIPathExtras:
 			values[i] = new(sql.NullString)
+		case useraccessevent.FieldCreatedAt, useraccessevent.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -120,6 +127,18 @@ func (uae *UserAccessEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field response_code", values[i])
 			} else if value.Valid {
 				uae.ResponseCode = int(value.Int64)
+			}
+		case useraccessevent.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				uae.CreatedAt = value.Time
+			}
+		case useraccessevent.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				uae.UpdatedAt = value.Time
 			}
 		default:
 			uae.selectValues.Set(columns[i], values[i])
@@ -179,6 +198,12 @@ func (uae *UserAccessEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("response_code=")
 	builder.WriteString(fmt.Sprintf("%v", uae.ResponseCode))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(uae.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(uae.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

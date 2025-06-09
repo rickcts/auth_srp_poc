@@ -29,7 +29,7 @@ func TestJWTService_GenerateToken(t *testing.T) {
 		require.NotEmpty(t, tokenString, "Generated token string should not be empty")
 
 		// Check expiry time (approx 1 hour from now)
-		expectedExpiry := time.Now().Add(time.Hour * 1)
+		expectedExpiry := time.Now().UTC().Add(time.Hour * 1)
 		assert.WithinDuration(t, expectedExpiry, expiry, 5*time.Second, "Expiry time is not approximately 1 hour from now")
 
 		// Parse the token to verify claims

@@ -17,7 +17,7 @@ import (
 
 func setupTestConfig() *config.Config {
 	return &config.Config{
-		OAuthProviders: map[string]*oauth2.Config{
+		OAuth: map[string]*oauth2.Config{
 			"MICROSOFT": {
 				ClientID:     "test-client-id",
 				ClientSecret: "test-client-secret",
@@ -42,7 +42,7 @@ func TestNewMSOAuthService(t *testing.T) {
 	assert.NotNil(t, service)
 	assert.Equal(t, mockRepo, service.userRepo)
 	assert.Equal(t, cfg, service.cfg)
-	assert.Equal(t, cfg.OAuthProviders["MICROSOFT"], service.oAuthConfig)
+	assert.Equal(t, cfg.OAuth["MICROSOFT"], service.oAuthConfig)
 	assert.Equal(t, "https://graph.microsoft.com/v1.0/me", service.api)
 }
 
@@ -53,7 +53,7 @@ func TestGetAuthCodeURL(t *testing.T) {
 
 	url := service.GetAuthCodeURL(state)
 
-	assert.Contains(t, url, cfg.OAuthProviders["MICROSOFT"].Endpoint.AuthURL)
+	assert.Contains(t, url, cfg.OAuth["MICROSOFT"].Endpoint.AuthURL)
 	assert.Contains(t, url, "client_id=test-client-id")
 	assert.Contains(t, url, "redirect_uri=http%3A%2F%2Flocalhost%2Fcallback")
 	assert.Contains(t, url, "response_type=code")

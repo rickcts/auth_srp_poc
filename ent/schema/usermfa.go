@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -17,6 +19,8 @@ func (UserMFA) Fields() []ent.Field {
 		field.Int64("user_id"),
 		field.String("mfa_method").Comment("SMS, EMAIL, NUM_MATCH, etc."),
 		field.String("params").Optional(),
+		field.Time("created_at").Default(time.Now().UTC).Immutable(),
+		field.Time("updated_at").Default(time.Now().UTC).UpdateDefault(time.Now().UTC),
 	}
 }
 

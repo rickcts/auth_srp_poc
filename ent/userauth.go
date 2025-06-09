@@ -5,6 +5,7 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -25,6 +26,10 @@ type UserAuth struct {
 	AuthProvider string `json:"auth_provider,omitempty"`
 	// AuthID holds the value of the "auth_id" field.
 	AuthID string `json:"auth_id,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserAuthQuery when eager-loading is set.
 	Edges        UserAuthEdges `json:"edges"`
@@ -60,6 +65,8 @@ func (*UserAuth) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case userauth.FieldAuthExtras, userauth.FieldAuthProvider, userauth.FieldAuthID:
 			values[i] = new(sql.NullString)
+		case userauth.FieldCreatedAt, userauth.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -104,6 +111,18 @@ func (ua *UserAuth) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field auth_id", values[i])
 			} else if value.Valid {
 				ua.AuthID = value.String
+			}
+		case userauth.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				ua.CreatedAt = value.Time
+			}
+		case userauth.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				ua.UpdatedAt = value.Time
 			}
 		default:
 			ua.selectValues.Set(columns[i], values[i])
@@ -157,6 +176,12 @@ func (ua *UserAuth) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("auth_id=")
 	builder.WriteString(ua.AuthID)
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(ua.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(ua.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

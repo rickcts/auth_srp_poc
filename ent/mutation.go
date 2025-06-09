@@ -959,6 +959,8 @@ type UserAccessEventMutation struct {
 	api_path_extras  *string
 	response_code    *int
 	addresponse_code *int
+	created_at       *time.Time
+	updated_at       *time.Time
 	clearedFields    map[string]struct{}
 	user             *int64
 	cleareduser      bool
@@ -1301,6 +1303,78 @@ func (m *UserAccessEventMutation) ResetResponseCode() {
 	m.addresponse_code = nil
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (m *UserAccessEventMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *UserAccessEventMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the UserAccessEvent entity.
+// If the UserAccessEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserAccessEventMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *UserAccessEventMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *UserAccessEventMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *UserAccessEventMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the UserAccessEvent entity.
+// If the UserAccessEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserAccessEventMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *UserAccessEventMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *UserAccessEventMutation) ClearUser() {
 	m.cleareduser = true
@@ -1362,7 +1436,7 @@ func (m *UserAccessEventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserAccessEventMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.user != nil {
 		fields = append(fields, useraccessevent.FieldUserID)
 	}
@@ -1380,6 +1454,12 @@ func (m *UserAccessEventMutation) Fields() []string {
 	}
 	if m.response_code != nil {
 		fields = append(fields, useraccessevent.FieldResponseCode)
+	}
+	if m.created_at != nil {
+		fields = append(fields, useraccessevent.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, useraccessevent.FieldUpdatedAt)
 	}
 	return fields
 }
@@ -1401,6 +1481,10 @@ func (m *UserAccessEventMutation) Field(name string) (ent.Value, bool) {
 		return m.APIPathExtras()
 	case useraccessevent.FieldResponseCode:
 		return m.ResponseCode()
+	case useraccessevent.FieldCreatedAt:
+		return m.CreatedAt()
+	case useraccessevent.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -1422,6 +1506,10 @@ func (m *UserAccessEventMutation) OldField(ctx context.Context, name string) (en
 		return m.OldAPIPathExtras(ctx)
 	case useraccessevent.FieldResponseCode:
 		return m.OldResponseCode(ctx)
+	case useraccessevent.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case useraccessevent.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown UserAccessEvent field %s", name)
 }
@@ -1472,6 +1560,20 @@ func (m *UserAccessEventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResponseCode(v)
+		return nil
+	case useraccessevent.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case useraccessevent.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UserAccessEvent field %s", name)
@@ -1554,6 +1656,12 @@ func (m *UserAccessEventMutation) ResetField(name string) error {
 		return nil
 	case useraccessevent.FieldResponseCode:
 		m.ResetResponseCode()
+		return nil
+	case useraccessevent.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case useraccessevent.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown UserAccessEvent field %s", name)
@@ -1642,6 +1750,8 @@ type UserAuthMutation struct {
 	auth_extras   *string
 	auth_provider *string
 	auth_id       *string
+	created_at    *time.Time
+	updated_at    *time.Time
 	clearedFields map[string]struct{}
 	user          *int64
 	cleareduser   bool
@@ -1892,6 +2002,78 @@ func (m *UserAuthMutation) ResetAuthID() {
 	m.auth_id = nil
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (m *UserAuthMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *UserAuthMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the UserAuth entity.
+// If the UserAuth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserAuthMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *UserAuthMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *UserAuthMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *UserAuthMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the UserAuth entity.
+// If the UserAuth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserAuthMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *UserAuthMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *UserAuthMutation) ClearUser() {
 	m.cleareduser = true
@@ -1953,7 +2135,7 @@ func (m *UserAuthMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserAuthMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 6)
 	if m.user != nil {
 		fields = append(fields, userauth.FieldUserID)
 	}
@@ -1965,6 +2147,12 @@ func (m *UserAuthMutation) Fields() []string {
 	}
 	if m.auth_id != nil {
 		fields = append(fields, userauth.FieldAuthID)
+	}
+	if m.created_at != nil {
+		fields = append(fields, userauth.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, userauth.FieldUpdatedAt)
 	}
 	return fields
 }
@@ -1982,6 +2170,10 @@ func (m *UserAuthMutation) Field(name string) (ent.Value, bool) {
 		return m.AuthProvider()
 	case userauth.FieldAuthID:
 		return m.AuthID()
+	case userauth.FieldCreatedAt:
+		return m.CreatedAt()
+	case userauth.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -1999,6 +2191,10 @@ func (m *UserAuthMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldAuthProvider(ctx)
 	case userauth.FieldAuthID:
 		return m.OldAuthID(ctx)
+	case userauth.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case userauth.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown UserAuth field %s", name)
 }
@@ -2035,6 +2231,20 @@ func (m *UserAuthMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAuthID(v)
+		return nil
+	case userauth.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case userauth.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UserAuth field %s", name)
@@ -2099,6 +2309,12 @@ func (m *UserAuthMutation) ResetField(name string) error {
 		return nil
 	case userauth.FieldAuthID:
 		m.ResetAuthID()
+		return nil
+	case userauth.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case userauth.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown UserAuth field %s", name)
@@ -2187,11 +2403,13 @@ type UserAuthEventMutation struct {
 	auth_provider    *int64
 	addauth_provider *int64
 	host             *string
-	timestamp        *time.Time
+	unix_ts          *time.Time
 	ns               *int64
 	addns            *int64
 	error_code       *int
 	adderror_code    *int
+	created_at       *time.Time
+	updated_at       *time.Time
 	clearedFields    map[string]struct{}
 	user             *int64
 	cleareduser      bool
@@ -2426,40 +2644,40 @@ func (m *UserAuthEventMutation) ResetHost() {
 	m.host = nil
 }
 
-// SetTimestamp sets the "timestamp" field.
-func (m *UserAuthEventMutation) SetTimestamp(t time.Time) {
-	m.timestamp = &t
+// SetUnixTs sets the "unix_ts" field.
+func (m *UserAuthEventMutation) SetUnixTs(t time.Time) {
+	m.unix_ts = &t
 }
 
-// Timestamp returns the value of the "timestamp" field in the mutation.
-func (m *UserAuthEventMutation) Timestamp() (r time.Time, exists bool) {
-	v := m.timestamp
+// UnixTs returns the value of the "unix_ts" field in the mutation.
+func (m *UserAuthEventMutation) UnixTs() (r time.Time, exists bool) {
+	v := m.unix_ts
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldTimestamp returns the old "timestamp" field's value of the UserAuthEvent entity.
+// OldUnixTs returns the old "unix_ts" field's value of the UserAuthEvent entity.
 // If the UserAuthEvent object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserAuthEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+func (m *UserAuthEventMutation) OldUnixTs(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+		return v, errors.New("OldUnixTs is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+		return v, errors.New("OldUnixTs requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+		return v, fmt.Errorf("querying old value for OldUnixTs: %w", err)
 	}
-	return oldValue.Timestamp, nil
+	return oldValue.UnixTs, nil
 }
 
-// ResetTimestamp resets all changes to the "timestamp" field.
-func (m *UserAuthEventMutation) ResetTimestamp() {
-	m.timestamp = nil
+// ResetUnixTs resets all changes to the "unix_ts" field.
+func (m *UserAuthEventMutation) ResetUnixTs() {
+	m.unix_ts = nil
 }
 
 // SetNs sets the "ns" field.
@@ -2574,6 +2792,78 @@ func (m *UserAuthEventMutation) ResetErrorCode() {
 	m.adderror_code = nil
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (m *UserAuthEventMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *UserAuthEventMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the UserAuthEvent entity.
+// If the UserAuthEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserAuthEventMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *UserAuthEventMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *UserAuthEventMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *UserAuthEventMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the UserAuthEvent entity.
+// If the UserAuthEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserAuthEventMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *UserAuthEventMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *UserAuthEventMutation) ClearUser() {
 	m.cleareduser = true
@@ -2635,7 +2925,7 @@ func (m *UserAuthEventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserAuthEventMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.user != nil {
 		fields = append(fields, userauthevent.FieldUserID)
 	}
@@ -2645,14 +2935,20 @@ func (m *UserAuthEventMutation) Fields() []string {
 	if m.host != nil {
 		fields = append(fields, userauthevent.FieldHost)
 	}
-	if m.timestamp != nil {
-		fields = append(fields, userauthevent.FieldTimestamp)
+	if m.unix_ts != nil {
+		fields = append(fields, userauthevent.FieldUnixTs)
 	}
 	if m.ns != nil {
 		fields = append(fields, userauthevent.FieldNs)
 	}
 	if m.error_code != nil {
 		fields = append(fields, userauthevent.FieldErrorCode)
+	}
+	if m.created_at != nil {
+		fields = append(fields, userauthevent.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, userauthevent.FieldUpdatedAt)
 	}
 	return fields
 }
@@ -2668,12 +2964,16 @@ func (m *UserAuthEventMutation) Field(name string) (ent.Value, bool) {
 		return m.AuthProvider()
 	case userauthevent.FieldHost:
 		return m.Host()
-	case userauthevent.FieldTimestamp:
-		return m.Timestamp()
+	case userauthevent.FieldUnixTs:
+		return m.UnixTs()
 	case userauthevent.FieldNs:
 		return m.Ns()
 	case userauthevent.FieldErrorCode:
 		return m.ErrorCode()
+	case userauthevent.FieldCreatedAt:
+		return m.CreatedAt()
+	case userauthevent.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -2689,12 +2989,16 @@ func (m *UserAuthEventMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldAuthProvider(ctx)
 	case userauthevent.FieldHost:
 		return m.OldHost(ctx)
-	case userauthevent.FieldTimestamp:
-		return m.OldTimestamp(ctx)
+	case userauthevent.FieldUnixTs:
+		return m.OldUnixTs(ctx)
 	case userauthevent.FieldNs:
 		return m.OldNs(ctx)
 	case userauthevent.FieldErrorCode:
 		return m.OldErrorCode(ctx)
+	case userauthevent.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case userauthevent.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown UserAuthEvent field %s", name)
 }
@@ -2725,12 +3029,12 @@ func (m *UserAuthEventMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetHost(v)
 		return nil
-	case userauthevent.FieldTimestamp:
+	case userauthevent.FieldUnixTs:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTimestamp(v)
+		m.SetUnixTs(v)
 		return nil
 	case userauthevent.FieldNs:
 		v, ok := value.(int64)
@@ -2745,6 +3049,20 @@ func (m *UserAuthEventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetErrorCode(v)
+		return nil
+	case userauthevent.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case userauthevent.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UserAuthEvent field %s", name)
@@ -2843,14 +3161,20 @@ func (m *UserAuthEventMutation) ResetField(name string) error {
 	case userauthevent.FieldHost:
 		m.ResetHost()
 		return nil
-	case userauthevent.FieldTimestamp:
-		m.ResetTimestamp()
+	case userauthevent.FieldUnixTs:
+		m.ResetUnixTs()
 		return nil
 	case userauthevent.FieldNs:
 		m.ResetNs()
 		return nil
 	case userauthevent.FieldErrorCode:
 		m.ResetErrorCode()
+		return nil
+	case userauthevent.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case userauthevent.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown UserAuthEvent field %s", name)
@@ -2938,6 +3262,8 @@ type UserMFAMutation struct {
 	id            *int
 	mfa_method    *string
 	params        *string
+	created_at    *time.Time
+	updated_at    *time.Time
 	clearedFields map[string]struct{}
 	user          *int64
 	cleareduser   bool
@@ -3165,6 +3491,78 @@ func (m *UserMFAMutation) ResetParams() {
 	delete(m.clearedFields, usermfa.FieldParams)
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (m *UserMFAMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *UserMFAMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the UserMFA entity.
+// If the UserMFA object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMFAMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *UserMFAMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *UserMFAMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *UserMFAMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the UserMFA entity.
+// If the UserMFA object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMFAMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *UserMFAMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *UserMFAMutation) ClearUser() {
 	m.cleareduser = true
@@ -3226,7 +3624,7 @@ func (m *UserMFAMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMFAMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 5)
 	if m.user != nil {
 		fields = append(fields, usermfa.FieldUserID)
 	}
@@ -3235,6 +3633,12 @@ func (m *UserMFAMutation) Fields() []string {
 	}
 	if m.params != nil {
 		fields = append(fields, usermfa.FieldParams)
+	}
+	if m.created_at != nil {
+		fields = append(fields, usermfa.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, usermfa.FieldUpdatedAt)
 	}
 	return fields
 }
@@ -3250,6 +3654,10 @@ func (m *UserMFAMutation) Field(name string) (ent.Value, bool) {
 		return m.MfaMethod()
 	case usermfa.FieldParams:
 		return m.Params()
+	case usermfa.FieldCreatedAt:
+		return m.CreatedAt()
+	case usermfa.FieldUpdatedAt:
+		return m.UpdatedAt()
 	}
 	return nil, false
 }
@@ -3265,6 +3673,10 @@ func (m *UserMFAMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMfaMethod(ctx)
 	case usermfa.FieldParams:
 		return m.OldParams(ctx)
+	case usermfa.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case usermfa.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown UserMFA field %s", name)
 }
@@ -3294,6 +3706,20 @@ func (m *UserMFAMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetParams(v)
+		return nil
+	case usermfa.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case usermfa.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UserMFA field %s", name)
@@ -3364,6 +3790,12 @@ func (m *UserMFAMutation) ResetField(name string) error {
 		return nil
 	case usermfa.FieldParams:
 		m.ResetParams()
+		return nil
+	case usermfa.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case usermfa.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown UserMFA field %s", name)

@@ -39,9 +39,17 @@ func (uaec *UserAuthEventCreate) SetHost(s string) *UserAuthEventCreate {
 	return uaec
 }
 
-// SetTimestamp sets the "timestamp" field.
-func (uaec *UserAuthEventCreate) SetTimestamp(t time.Time) *UserAuthEventCreate {
-	uaec.mutation.SetTimestamp(t)
+// SetUnixTs sets the "unix_ts" field.
+func (uaec *UserAuthEventCreate) SetUnixTs(t time.Time) *UserAuthEventCreate {
+	uaec.mutation.SetUnixTs(t)
+	return uaec
+}
+
+// SetNillableUnixTs sets the "unix_ts" field if the given value is not nil.
+func (uaec *UserAuthEventCreate) SetNillableUnixTs(t *time.Time) *UserAuthEventCreate {
+	if t != nil {
+		uaec.SetUnixTs(*t)
+	}
 	return uaec
 }
 
@@ -51,9 +59,45 @@ func (uaec *UserAuthEventCreate) SetNs(i int64) *UserAuthEventCreate {
 	return uaec
 }
 
+// SetNillableNs sets the "ns" field if the given value is not nil.
+func (uaec *UserAuthEventCreate) SetNillableNs(i *int64) *UserAuthEventCreate {
+	if i != nil {
+		uaec.SetNs(*i)
+	}
+	return uaec
+}
+
 // SetErrorCode sets the "error_code" field.
 func (uaec *UserAuthEventCreate) SetErrorCode(i int) *UserAuthEventCreate {
 	uaec.mutation.SetErrorCode(i)
+	return uaec
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (uaec *UserAuthEventCreate) SetCreatedAt(t time.Time) *UserAuthEventCreate {
+	uaec.mutation.SetCreatedAt(t)
+	return uaec
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (uaec *UserAuthEventCreate) SetNillableCreatedAt(t *time.Time) *UserAuthEventCreate {
+	if t != nil {
+		uaec.SetCreatedAt(*t)
+	}
+	return uaec
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (uaec *UserAuthEventCreate) SetUpdatedAt(t time.Time) *UserAuthEventCreate {
+	uaec.mutation.SetUpdatedAt(t)
+	return uaec
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (uaec *UserAuthEventCreate) SetNillableUpdatedAt(t *time.Time) *UserAuthEventCreate {
+	if t != nil {
+		uaec.SetUpdatedAt(*t)
+	}
 	return uaec
 }
 
@@ -69,6 +113,7 @@ func (uaec *UserAuthEventCreate) Mutation() *UserAuthEventMutation {
 
 // Save creates the UserAuthEvent in the database.
 func (uaec *UserAuthEventCreate) Save(ctx context.Context) (*UserAuthEvent, error) {
+	uaec.defaults()
 	return withHooks(ctx, uaec.sqlSave, uaec.mutation, uaec.hooks)
 }
 
@@ -94,6 +139,26 @@ func (uaec *UserAuthEventCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (uaec *UserAuthEventCreate) defaults() {
+	if _, ok := uaec.mutation.UnixTs(); !ok {
+		v := userauthevent.DefaultUnixTs()
+		uaec.mutation.SetUnixTs(v)
+	}
+	if _, ok := uaec.mutation.Ns(); !ok {
+		v := userauthevent.DefaultNs()
+		uaec.mutation.SetNs(v)
+	}
+	if _, ok := uaec.mutation.CreatedAt(); !ok {
+		v := userauthevent.DefaultCreatedAt()
+		uaec.mutation.SetCreatedAt(v)
+	}
+	if _, ok := uaec.mutation.UpdatedAt(); !ok {
+		v := userauthevent.DefaultUpdatedAt()
+		uaec.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (uaec *UserAuthEventCreate) check() error {
 	if _, ok := uaec.mutation.UserID(); !ok {
@@ -105,14 +170,20 @@ func (uaec *UserAuthEventCreate) check() error {
 	if _, ok := uaec.mutation.Host(); !ok {
 		return &ValidationError{Name: "host", err: errors.New(`ent: missing required field "UserAuthEvent.host"`)}
 	}
-	if _, ok := uaec.mutation.Timestamp(); !ok {
-		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "UserAuthEvent.timestamp"`)}
+	if _, ok := uaec.mutation.UnixTs(); !ok {
+		return &ValidationError{Name: "unix_ts", err: errors.New(`ent: missing required field "UserAuthEvent.unix_ts"`)}
 	}
 	if _, ok := uaec.mutation.Ns(); !ok {
 		return &ValidationError{Name: "ns", err: errors.New(`ent: missing required field "UserAuthEvent.ns"`)}
 	}
 	if _, ok := uaec.mutation.ErrorCode(); !ok {
 		return &ValidationError{Name: "error_code", err: errors.New(`ent: missing required field "UserAuthEvent.error_code"`)}
+	}
+	if _, ok := uaec.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "UserAuthEvent.created_at"`)}
+	}
+	if _, ok := uaec.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UserAuthEvent.updated_at"`)}
 	}
 	if len(uaec.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserAuthEvent.user"`)}
@@ -151,9 +222,9 @@ func (uaec *UserAuthEventCreate) createSpec() (*UserAuthEvent, *sqlgraph.CreateS
 		_spec.SetField(userauthevent.FieldHost, field.TypeString, value)
 		_node.Host = value
 	}
-	if value, ok := uaec.mutation.Timestamp(); ok {
-		_spec.SetField(userauthevent.FieldTimestamp, field.TypeTime, value)
-		_node.Timestamp = value
+	if value, ok := uaec.mutation.UnixTs(); ok {
+		_spec.SetField(userauthevent.FieldUnixTs, field.TypeTime, value)
+		_node.UnixTs = value
 	}
 	if value, ok := uaec.mutation.Ns(); ok {
 		_spec.SetField(userauthevent.FieldNs, field.TypeInt64, value)
@@ -162,6 +233,14 @@ func (uaec *UserAuthEventCreate) createSpec() (*UserAuthEvent, *sqlgraph.CreateS
 	if value, ok := uaec.mutation.ErrorCode(); ok {
 		_spec.SetField(userauthevent.FieldErrorCode, field.TypeInt, value)
 		_node.ErrorCode = value
+	}
+	if value, ok := uaec.mutation.CreatedAt(); ok {
+		_spec.SetField(userauthevent.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := uaec.mutation.UpdatedAt(); ok {
+		_spec.SetField(userauthevent.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := uaec.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -201,6 +280,7 @@ func (uaecb *UserAuthEventCreateBulk) Save(ctx context.Context) ([]*UserAuthEven
 	for i := range uaecb.builders {
 		func(i int, root context.Context) {
 			builder := uaecb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*UserAuthEventMutation)
 				if !ok {

@@ -357,7 +357,7 @@ func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 		Salt:   saltBytes,
 		Server: serverSession, // The *actual* server session from step 1 simulation
 		B:      serverBBytes,
-		Expiry: cfg.SRP.AuthStateExpiry,
+		Expiry: time.Now().UTC().Add(5 * time.Minute),
 	}
 
 	// 5. Prepare the request for Step 2
@@ -396,7 +396,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
 		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once()
 		expectedToken := "test-jwt-token"
-		expectedExpiry := time.Now().Add(1 * time.Hour)
+		expectedExpiry := time.Now().UTC().Add(1 * time.Hour)
 		deps.mockTokenSvc.On("GenerateToken", data.authID).Return(expectedToken, expectedExpiry, nil).Once()
 		deps.mockSessionRepo.On("StoreSession", ctx, mock.AnythingOfType("*models.Session")).Return(nil).Once()
 
@@ -425,7 +425,6 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 
 		// Mock expectations
 		deps.mockStateRepo.On("GetAuthState", data.authID).Return(nil, repository.ErrStateNotFound).Once()
-		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once() // Service calls this on GetAuthState failure
 
 		// Execute
 		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
@@ -458,7 +457,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		// Assert
 		require.Error(t, err)
 		require.Nil(t, resp)
-		assert.Contains(t, err.Error(), "client proof M1 verification failed")
+		assert.ErrorIs(t, err, ErrSRPAuthenticationFailed)
 
 		deps.mockStateRepo.AssertExpectations(t)
 		deps.mockTokenSvc.AssertNotCalled(t, "GenerateToken", mock.Anything)
@@ -582,7 +581,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(deleteErr).Once() // Simulate error during delete
 
 		expectedToken := "test-jwt-token"
-		expectedExpiry := time.Now().Add(1 * time.Hour)
+		expectedExpiry := time.Now().UTC().Add(1 * time.Hour)
 		deps.mockTokenSvc.On("GenerateToken", data.authID).Return(expectedToken, expectedExpiry, nil).Once() // Token generation still happens
 
 		deps.mockUserRepo.On("GetUserInfoByAuthID", ctx, data.authID).Return(

@@ -98,8 +98,8 @@ func TestSRPAuthService_SignOut(t *testing.T) {
 
 func TestSessionService_ExtendUserSession(t *testing.T) {
 	ctx := context.Background()
-	validExpiry := time.Now().Add(1 * time.Hour)
-	newExpiry := time.Now().Add(2 * time.Hour)
+	validExpiry := time.Now().UTC().Add(1 * time.Hour)
+	newExpiry := time.Now().UTC().Add(2 * time.Hour)
 
 	currentValidSession := &models.Session{
 		SessionID: testSessionToken,
@@ -154,7 +154,7 @@ func TestSessionService_ExtendUserSession(t *testing.T) {
 			SessionID: testSessionToken,
 			UserID:    testUserIDSession,
 			AuthID:    testAuthIDSession,
-			Expiry:    time.Now().Add(-1 * time.Hour),
+			Expiry:    time.Now().UTC().Add(-1 * time.Hour),
 		}
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(expiredSession, nil).Once()
 		deps.mockSessionRepo.On("DeleteSession", ctx, testSessionToken).Return(nil).Once() // Cleanup call
@@ -214,7 +214,7 @@ func TestSessionService_ExtendUserSession(t *testing.T) {
 
 func TestSessionService_VerifySessionToken(t *testing.T) {
 	ctx := context.Background()
-	validExpiry := time.Now().Add(1 * time.Hour)
+	validExpiry := time.Now().UTC().Add(1 * time.Hour)
 	sessionFromRepo := &models.Session{
 		SessionID: testSessionToken,
 		UserID:    testUserIDSession,
@@ -267,7 +267,7 @@ func TestSessionService_VerifySessionToken(t *testing.T) {
 		expiredSession := &models.Session{
 			SessionID: testSessionToken,
 			UserID:    testUserIDSession,
-			Expiry:    time.Now().Add(-1 * time.Hour), // Expired
+			Expiry:    time.Now().UTC().Add(-1 * time.Hour), // Expired
 		}
 		deps.mockSessionRepo.On("GetSession", ctx, testSessionToken).Return(expiredSession, nil).Once()
 		deps.mockSessionRepo.On("DeleteSession", ctx, testSessionToken).Return(nil).Once() // Expect cleanup

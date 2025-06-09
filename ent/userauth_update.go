@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -84,6 +85,12 @@ func (uau *UserAuthUpdate) SetNillableAuthID(s *string) *UserAuthUpdate {
 	return uau
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (uau *UserAuthUpdate) SetUpdatedAt(t time.Time) *UserAuthUpdate {
+	uau.mutation.SetUpdatedAt(t)
+	return uau
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uau *UserAuthUpdate) SetUser(u *User) *UserAuthUpdate {
 	return uau.SetUserID(u.ID)
@@ -102,6 +109,7 @@ func (uau *UserAuthUpdate) ClearUser() *UserAuthUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (uau *UserAuthUpdate) Save(ctx context.Context) (int, error) {
+	uau.defaults()
 	return withHooks(ctx, uau.sqlSave, uau.mutation, uau.hooks)
 }
 
@@ -124,6 +132,14 @@ func (uau *UserAuthUpdate) Exec(ctx context.Context) error {
 func (uau *UserAuthUpdate) ExecX(ctx context.Context) {
 	if err := uau.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uau *UserAuthUpdate) defaults() {
+	if _, ok := uau.mutation.UpdatedAt(); !ok {
+		v := userauth.UpdateDefaultUpdatedAt()
+		uau.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -155,6 +171,9 @@ func (uau *UserAuthUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := uau.mutation.AuthID(); ok {
 		_spec.SetField(userauth.FieldAuthID, field.TypeString, value)
+	}
+	if value, ok := uau.mutation.UpdatedAt(); ok {
+		_spec.SetField(userauth.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uau.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -261,6 +280,12 @@ func (uauo *UserAuthUpdateOne) SetNillableAuthID(s *string) *UserAuthUpdateOne {
 	return uauo
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (uauo *UserAuthUpdateOne) SetUpdatedAt(t time.Time) *UserAuthUpdateOne {
+	uauo.mutation.SetUpdatedAt(t)
+	return uauo
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uauo *UserAuthUpdateOne) SetUser(u *User) *UserAuthUpdateOne {
 	return uauo.SetUserID(u.ID)
@@ -292,6 +317,7 @@ func (uauo *UserAuthUpdateOne) Select(field string, fields ...string) *UserAuthU
 
 // Save executes the query and returns the updated UserAuth entity.
 func (uauo *UserAuthUpdateOne) Save(ctx context.Context) (*UserAuth, error) {
+	uauo.defaults()
 	return withHooks(ctx, uauo.sqlSave, uauo.mutation, uauo.hooks)
 }
 
@@ -314,6 +340,14 @@ func (uauo *UserAuthUpdateOne) Exec(ctx context.Context) error {
 func (uauo *UserAuthUpdateOne) ExecX(ctx context.Context) {
 	if err := uauo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uauo *UserAuthUpdateOne) defaults() {
+	if _, ok := uauo.mutation.UpdatedAt(); !ok {
+		v := userauth.UpdateDefaultUpdatedAt()
+		uauo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -362,6 +396,9 @@ func (uauo *UserAuthUpdateOne) sqlSave(ctx context.Context) (_node *UserAuth, er
 	}
 	if value, ok := uauo.mutation.AuthID(); ok {
 		_spec.SetField(userauth.FieldAuthID, field.TypeString, value)
+	}
+	if value, ok := uauo.mutation.UpdatedAt(); ok {
+		_spec.SetField(userauth.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uauo.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

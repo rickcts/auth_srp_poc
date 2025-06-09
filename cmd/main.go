@@ -29,15 +29,9 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	redisOpts, err := redis.ParseURL(cfg.RedisSettings.Address)
-	if err != nil {
-		log.Fatalf("Failed to parse Redis URL '%s': %v", cfg.RedisSettings.Address, err)
-	}
-	// Add any other Redis options from your config if needed, e.g., Password, DB
-	// redisOpts.Password = cfg.RedisSettings.Password
-	redisClient := redis.NewClient(redisOpts)
+	redisClient := redis.NewClient(cfg.RedisSettings)
 
-	entClient, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseSettings)
+	entClient, err := ent.Open(cfg.Database.DatabaseDriver, cfg.Database.DSN)
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
@@ -52,13 +46,14 @@ func main() {
 	verificationTokenRepo := redis_repo.NewRedisVerificationTokenRepository(redisClient)
 	stateRepo := memory.NewMemoryStateRepository()
 
-	tokenService := service.NewTokenService(cfg.JWTSecret)
+	tokenService := service.NewTokenService(cfg.App.JWTSecret)
 	emailService := service.NewSMTPEmailService(&cfg.SMTP)
 	sessionService := service.NewSessionService(sessionRepo, userRepo, tokenService)
+	userService := service.NewUserService(userRepo)
 
 	app := server.New()
 
-	router.SetupUserRoutes(app, handlers.NewJWTAuthHandler(tokenService, sessionService), cfg)
+	router.SetupUserRoutes(app, handlers.NewUserHandler(tokenService, sessionService, userService), cfg)
 	router.SetupSRPRoutes(app, handlers.NewSRPAuthHandler(
 		service.NewSRPAuthService(
 			userRepo,
@@ -78,8 +73,8 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		log.Printf("Server starting on port %s...", cfg.Port)
-		if err := app.Start(":" + cfg.Port); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("Server starting on port %s...", cfg.App.Port)
+		if err := app.Start(":" + cfg.App.Port); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()

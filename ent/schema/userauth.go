@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -18,6 +20,8 @@ func (UserAuth) Fields() []ent.Field {
 		field.Text("auth_extras"),
 		field.String("auth_provider"),
 		field.String("auth_id"),
+		field.Time("created_at").Default(time.Now().UTC).Immutable(),
+		field.Time("updated_at").Default(time.Now().UTC).UpdateDefault(time.Now().UTC),
 	}
 }
 

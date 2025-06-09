@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -56,6 +57,34 @@ func (uaec *UserAccessEventCreate) SetResponseCode(i int) *UserAccessEventCreate
 	return uaec
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (uaec *UserAccessEventCreate) SetCreatedAt(t time.Time) *UserAccessEventCreate {
+	uaec.mutation.SetCreatedAt(t)
+	return uaec
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (uaec *UserAccessEventCreate) SetNillableCreatedAt(t *time.Time) *UserAccessEventCreate {
+	if t != nil {
+		uaec.SetCreatedAt(*t)
+	}
+	return uaec
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (uaec *UserAccessEventCreate) SetUpdatedAt(t time.Time) *UserAccessEventCreate {
+	uaec.mutation.SetUpdatedAt(t)
+	return uaec
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (uaec *UserAccessEventCreate) SetNillableUpdatedAt(t *time.Time) *UserAccessEventCreate {
+	if t != nil {
+		uaec.SetUpdatedAt(*t)
+	}
+	return uaec
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uaec *UserAccessEventCreate) SetUser(u *User) *UserAccessEventCreate {
 	return uaec.SetUserID(u.ID)
@@ -68,6 +97,7 @@ func (uaec *UserAccessEventCreate) Mutation() *UserAccessEventMutation {
 
 // Save creates the UserAccessEvent in the database.
 func (uaec *UserAccessEventCreate) Save(ctx context.Context) (*UserAccessEvent, error) {
+	uaec.defaults()
 	return withHooks(ctx, uaec.sqlSave, uaec.mutation, uaec.hooks)
 }
 
@@ -90,6 +120,18 @@ func (uaec *UserAccessEventCreate) Exec(ctx context.Context) error {
 func (uaec *UserAccessEventCreate) ExecX(ctx context.Context) {
 	if err := uaec.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uaec *UserAccessEventCreate) defaults() {
+	if _, ok := uaec.mutation.CreatedAt(); !ok {
+		v := useraccessevent.DefaultCreatedAt()
+		uaec.mutation.SetCreatedAt(v)
+	}
+	if _, ok := uaec.mutation.UpdatedAt(); !ok {
+		v := useraccessevent.DefaultUpdatedAt()
+		uaec.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -127,6 +169,12 @@ func (uaec *UserAccessEventCreate) check() error {
 	}
 	if _, ok := uaec.mutation.ResponseCode(); !ok {
 		return &ValidationError{Name: "response_code", err: errors.New(`ent: missing required field "UserAccessEvent.response_code"`)}
+	}
+	if _, ok := uaec.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "UserAccessEvent.created_at"`)}
+	}
+	if _, ok := uaec.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UserAccessEvent.updated_at"`)}
 	}
 	if len(uaec.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserAccessEvent.user"`)}
@@ -177,6 +225,14 @@ func (uaec *UserAccessEventCreate) createSpec() (*UserAccessEvent, *sqlgraph.Cre
 		_spec.SetField(useraccessevent.FieldResponseCode, field.TypeInt, value)
 		_node.ResponseCode = value
 	}
+	if value, ok := uaec.mutation.CreatedAt(); ok {
+		_spec.SetField(useraccessevent.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := uaec.mutation.UpdatedAt(); ok {
+		_spec.SetField(useraccessevent.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if nodes := uaec.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -215,6 +271,7 @@ func (uaecb *UserAccessEventCreateBulk) Save(ctx context.Context) ([]*UserAccess
 	for i := range uaecb.builders {
 		func(i int, root context.Context) {
 			builder := uaecb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*UserAccessEventMutation)
 				if !ok {

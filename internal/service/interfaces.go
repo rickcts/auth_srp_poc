@@ -53,6 +53,11 @@ type EmailService interface {
 	SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error
 }
 
+type UserGenerator interface {
+	UpdateUserInfo(ctx context.Context, authID, displayName string) error
+	DeleteUser(ctx context.Context, authID string) error
+}
+
 type OAuthProvider interface {
 	GetAuthCodeURL(state string) string
 	ExchangeCode(ctx context.Context, code string) (*oauth2.Token, error)

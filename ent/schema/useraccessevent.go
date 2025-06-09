@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -20,6 +22,8 @@ func (UserAccessEvent) Fields() []ent.Field {
 		field.String("api_path").MaxLen(255).NotEmpty(),
 		field.Text("api_path_extras"),
 		field.Int("response_code"),
+		field.Time("created_at").Default(time.Now().UTC).Immutable(),
+		field.Time("updated_at").Default(time.Now().UTC).UpdateDefault(time.Now().UTC),
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -119,6 +120,12 @@ func (uaeu *UserAccessEventUpdate) AddResponseCode(i int) *UserAccessEventUpdate
 	return uaeu
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (uaeu *UserAccessEventUpdate) SetUpdatedAt(t time.Time) *UserAccessEventUpdate {
+	uaeu.mutation.SetUpdatedAt(t)
+	return uaeu
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uaeu *UserAccessEventUpdate) SetUser(u *User) *UserAccessEventUpdate {
 	return uaeu.SetUserID(u.ID)
@@ -137,6 +144,7 @@ func (uaeu *UserAccessEventUpdate) ClearUser() *UserAccessEventUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (uaeu *UserAccessEventUpdate) Save(ctx context.Context) (int, error) {
+	uaeu.defaults()
 	return withHooks(ctx, uaeu.sqlSave, uaeu.mutation, uaeu.hooks)
 }
 
@@ -159,6 +167,14 @@ func (uaeu *UserAccessEventUpdate) Exec(ctx context.Context) error {
 func (uaeu *UserAccessEventUpdate) ExecX(ctx context.Context) {
 	if err := uaeu.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uaeu *UserAccessEventUpdate) defaults() {
+	if _, ok := uaeu.mutation.UpdatedAt(); !ok {
+		v := useraccessevent.UpdateDefaultUpdatedAt()
+		uaeu.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -214,6 +230,9 @@ func (uaeu *UserAccessEventUpdate) sqlSave(ctx context.Context) (n int, err erro
 	}
 	if value, ok := uaeu.mutation.AddedResponseCode(); ok {
 		_spec.AddField(useraccessevent.FieldResponseCode, field.TypeInt, value)
+	}
+	if value, ok := uaeu.mutation.UpdatedAt(); ok {
+		_spec.SetField(useraccessevent.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uaeu.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -355,6 +374,12 @@ func (uaeuo *UserAccessEventUpdateOne) AddResponseCode(i int) *UserAccessEventUp
 	return uaeuo
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (uaeuo *UserAccessEventUpdateOne) SetUpdatedAt(t time.Time) *UserAccessEventUpdateOne {
+	uaeuo.mutation.SetUpdatedAt(t)
+	return uaeuo
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (uaeuo *UserAccessEventUpdateOne) SetUser(u *User) *UserAccessEventUpdateOne {
 	return uaeuo.SetUserID(u.ID)
@@ -386,6 +411,7 @@ func (uaeuo *UserAccessEventUpdateOne) Select(field string, fields ...string) *U
 
 // Save executes the query and returns the updated UserAccessEvent entity.
 func (uaeuo *UserAccessEventUpdateOne) Save(ctx context.Context) (*UserAccessEvent, error) {
+	uaeuo.defaults()
 	return withHooks(ctx, uaeuo.sqlSave, uaeuo.mutation, uaeuo.hooks)
 }
 
@@ -408,6 +434,14 @@ func (uaeuo *UserAccessEventUpdateOne) Exec(ctx context.Context) error {
 func (uaeuo *UserAccessEventUpdateOne) ExecX(ctx context.Context) {
 	if err := uaeuo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (uaeuo *UserAccessEventUpdateOne) defaults() {
+	if _, ok := uaeuo.mutation.UpdatedAt(); !ok {
+		v := useraccessevent.UpdateDefaultUpdatedAt()
+		uaeuo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -480,6 +514,9 @@ func (uaeuo *UserAccessEventUpdateOne) sqlSave(ctx context.Context) (_node *User
 	}
 	if value, ok := uaeuo.mutation.AddedResponseCode(); ok {
 		_spec.AddField(useraccessevent.FieldResponseCode, field.TypeInt, value)
+	}
+	if value, ok := uaeuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(useraccessevent.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if uaeuo.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

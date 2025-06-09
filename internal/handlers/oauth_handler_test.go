@@ -37,7 +37,9 @@ func setupOAuthTestApp(mockOAuthService *mocks.MockOAuthService, cfg *config.Con
 // Helper to create a test config
 func createTestOAuthConfig() *config.Config {
 	return &config.Config{
-		StateCookieName: "test_oauth_state",
+		App: config.APPConfig{
+			StateCookieName: "test-state-cookie",
+		},
 	}
 }
 
@@ -77,16 +79,16 @@ func TestOAuthHandler_Login(t *testing.T) {
 	cookies := resp.Cookies()
 	var stateCookie *http.Cookie
 	for _, c := range cookies {
-		if c.Name == cfg.StateCookieName {
+		if c.Name == cfg.App.StateCookieName {
 			stateCookie = c
 			break
 		}
 	}
-	require.NotNil(t, stateCookie, "State cookie '%s' should be set", cfg.StateCookieName)
+	require.NotNil(t, stateCookie, "State cookie '%s' should be set", cfg.App.StateCookieName)
 	require.NotEmpty(t, stateCookie.Value, "State cookie value should not be empty") // Use require here
 	assert.True(t, stateCookie.HttpOnly, "State cookie should be HttpOnly")
 	assert.Equal(t, http.SameSiteLaxMode, stateCookie.SameSite, "State cookie SameSite should be Lax")
-	expectedExpiry := time.Now().Add(10 * time.Minute)
+	expectedExpiry := time.Now().UTC().Add(10 * time.Minute)
 
 	assert.WithinDuration(t, expectedExpiry, stateCookie.Expires, 20*time.Second, "State cookie expiry is incorrect")
 
@@ -105,7 +107,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 	testToken := &oauth2.Token{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		Expiry:       time.Now().Add(1 * time.Hour),
+		Expiry:       time.Now().UTC().Add(1 * time.Hour),
 		TokenType:    "Bearer",
 	}
 	testUser := &models.OAuthUser{
@@ -128,7 +130,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		req := httptest.NewRequest("GET", targetURL, nil)
 		// Add the state cookie to the request
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState,
 		})
 
@@ -144,7 +146,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		// Check if state cookie was cleared (Set-Cookie with past expiry)
 		foundClearCookie := false
 		for _, c := range resp.Cookies() {
-			if c.Name == cfg.StateCookieName && c.Expires.Before(time.Now()) {
+			if c.Name == cfg.App.StateCookieName && c.Expires.Before(time.Now().UTC()) {
 				foundClearCookie = true
 				break
 			}
@@ -176,7 +178,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s&state=%s", testCode, wrongState)
 		req := httptest.NewRequest("GET", targetURL, nil)
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState, // Cookie has the correct state
 		})
 
@@ -195,7 +197,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		// Check if state cookie was cleared even on error
 		foundClearCookie := false
 		for _, c := range resp.Cookies() {
-			if c.Name == cfg.StateCookieName && c.Expires.Before(time.Now()) {
+			if c.Name == cfg.App.StateCookieName && c.Expires.Before(time.Now().UTC()) {
 				foundClearCookie = true
 				break
 			}
@@ -214,7 +216,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s", testCode) // No state
 		req := httptest.NewRequest("GET", targetURL, nil)
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState,
 		})
 
@@ -233,7 +235,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		// Check if state cookie was cleared
 		foundClearCookie := false
 		for _, c := range resp.Cookies() {
-			if c.Name == cfg.StateCookieName && c.Expires.Before(time.Now()) {
+			if c.Name == cfg.App.StateCookieName && c.Expires.Before(time.Now().UTC()) {
 				foundClearCookie = true
 				break
 			}
@@ -266,7 +268,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		// Check if state cookie was attempted to be cleared (it should be)
 		foundClearCookie := false
 		for _, c := range resp.Cookies() {
-			if c.Name == cfg.StateCookieName && c.Expires.Before(time.Now()) {
+			if c.Name == cfg.App.StateCookieName && c.Expires.Before(time.Now().UTC()) {
 				foundClearCookie = true
 				break
 			}
@@ -284,7 +286,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?state=%s", testState) // No code
 		req := httptest.NewRequest("GET", targetURL, nil)
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState,
 		})
 
@@ -314,7 +316,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s&state=%s", testCode, testState)
 		req := httptest.NewRequest("GET", targetURL, nil)
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState,
 		})
 
@@ -346,7 +348,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?code=%s&state=%s", testCode, testState)
 		req := httptest.NewRequest("GET", targetURL, nil)
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState,
 		})
 
@@ -375,7 +377,7 @@ func TestOAuthHandler_Callback(t *testing.T) {
 		targetURL := fmt.Sprintf("/api/auth/oauth/microsoft/callback?error=%s&error_description=%s&state=%s", oauthError, url.QueryEscape(oauthErrorDesc), testState)
 		req := httptest.NewRequest("GET", targetURL, nil)
 		req.AddCookie(&http.Cookie{
-			Name:  cfg.StateCookieName,
+			Name:  cfg.App.StateCookieName,
 			Value: testState,
 		})
 

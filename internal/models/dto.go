@@ -29,6 +29,10 @@ type SaltResponse struct {
 	Salt string `json:"s"` // Hex encoded salt
 }
 
+type NewUserInfoRequest struct {
+	DisplayName string `json:"displayName"`
+}
+
 type AuthStep1Request struct {
 	AuthID string `json:"authId"`
 }
@@ -81,6 +85,7 @@ type InitiatePasswordResetResponse struct {
 
 // CompletePasswordResetRequest is the input for completing the password reset process.
 type CompletePasswordResetRequest struct {
+	AuthID      string `json:"authId"`      // The user's identifier (e.g., email)
 	Token       string `json:"token"`       // The password reset token
 	NewSalt     string `json:"newSalt"`     // Hex encoded new salt 's'
 	NewVerifier string `json:"newVerifier"` // Hex encoded new verifier 'v'
@@ -88,13 +93,14 @@ type CompletePasswordResetRequest struct {
 
 // ValidatePasswordResetTokenRequest is the input for validating a password reset token.
 type ValidatePasswordResetTokenRequest struct {
-	Token string `json:"token"` // The password reset token (6-digit code)
+	AuthID string `json:"authId"` // The user's identifier (e.g., email)
+	Token  string `json:"token"`  // The password reset token (6-digit code)
 }
 
 // ValidatePasswordResetTokenResponse is the output after validating a password reset token.
 type ValidatePasswordResetTokenResponse struct {
 	IsValid bool   `json:"isValid"`
-	AuthID  string `json:"authId,omitempty"` // AuthID associated with the token, if valid. Only populated if IsValid is true.
+	AuthID  string `json:"authId,omitempty"` // AuthID associated with the token, if valid. This will be the same as input if valid.
 }
 
 type InitiateChangePasswordResponse struct {
