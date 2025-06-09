@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -36,14 +37,17 @@ func makeMemoryKey(authID, tokenType string) string {
 	return authID + ":" + tokenType
 }
 
-func (r *MemoryVerificationTokenRepository) storeToken(ctx context.Context, authID, tokenType, tokenValue string, expiryTime time.Time) error {
+func (r *MemoryVerificationTokenRepository) storeToken(ctx context.Context, authID, tokenType, tokenValue string, expireIn time.Duration) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if time.Until(expiryTime) <= 0 {
-		return repository.ErrVerificationTokenNotFound // Or specific error
+	if expireIn <= 0 {
+		return fmt.Errorf("expireIn duration must be positive")
 	}
+
+	expiryTime := time.Now().UTC().Add(expireIn)
 	key := makeMemoryKey(authID, tokenType)
+
 	r.tokens[key] = VerificationTokenEntry{
 		TokenValue: tokenValue,
 		Expiry:     expiryTime,
@@ -115,8 +119,8 @@ func (r *MemoryVerificationTokenRepository) deleteTokensForAuthID(ctx context.Co
 // --- Activation Token Methods ---
 
 // StoreActivationToken saves a new activation token.
-func (r *MemoryVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, token string, expiryTime time.Time) error {
-	return r.storeToken(ctx, authID, "activate", token, expiryTime)
+func (r *MemoryVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, token string, expireIn time.Duration) error {
+	return r.storeToken(ctx, authID, "activate", token, expireIn)
 }
 
 // ValidateAndConsumeActivationToken checks if an activation token is valid and consumes it.
@@ -135,8 +139,8 @@ func (r *MemoryVerificationTokenRepository) DeleteActivationTokensForAuthID(ctx 
 
 // --- Password Reset Token Methods ---
 
-func (r *MemoryVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expiry time.Time) error {
-	return r.storeToken(ctx, authID, "pwreset", token, expiry)
+func (r *MemoryVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expireIn time.Duration) error {
+	return r.storeToken(ctx, authID, "pwreset", token, expireIn)
 }
 
 func (r *MemoryVerificationTokenRepository) ValidateAndConsumePasswordResetToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {

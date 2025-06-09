@@ -920,7 +920,7 @@ paths:
     post:
       tags:
         - SRP Password Management
-      summary: Initiate password reset process
+      summary: Initiate password reset process (Email will only be sent once every minute, or will be rate limited)
       requestBody:
         required: true
         content:

@@ -395,14 +395,12 @@ func (s *SRPAuthService) InitiatePasswordReset(ctx context.Context, req models.I
 
 	exists, err := s.userRepo.CheckIfUserExists(ctx, req.AuthID)
 	if err != nil {
-		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to check if user exists for password reset")
-		// Do not reveal if user exists or not to prevent account enumeration.
-		// Log the error internally but return a generic success-like response to the client.
-		return nil // Or a specific error that the handler interprets as "email sent if user exists"
+		log.Warn().Err(err).Str("authId", req.AuthID).Msg("Failed to check if user exists for password reset")
+		return nil
 	}
 	if !exists {
-		log.Info().Str("authId", req.AuthID).Msg("User not found for password reset. No email will be sent.")
-		return nil // Same as above, generic response.
+		log.Warn().Str("authId", req.AuthID).Msg("User not found for password reset. No email will be sent.")
+		return nil
 	}
 
 	resetCode, err := generateSixDigitCode()
@@ -415,12 +413,11 @@ func (s *SRPAuthService) InitiatePasswordReset(ctx context.Context, req models.I
 	if activationExpiry == 0 {
 		activationExpiry = 15 * time.Minute // Default to 15 minutes if not configured (matches config default)
 	}
-	expiry := time.Now().UTC().Add(activationExpiry)
 
-	err = s.verificationTokenRepo.StorePasswordResetToken(ctx, req.AuthID, resetCode, expiry)
+	err = s.verificationTokenRepo.StorePasswordResetToken(ctx, req.AuthID, resetCode, activationExpiry)
 	if err != nil {
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to store password reset code")
-		return fmt.Errorf("failed to initiate password reset") // Internal error
+		return fmt.Errorf("failed to store password reset token: %w", err)
 	}
 
 	appName := s.cfg.App.Name
@@ -532,11 +529,10 @@ func (s *SRPAuthService) GenerateCodeAndSendActivationEmail(ctx context.Context,
 	if activationExpiry == 0 {
 		activationExpiry = 15 * time.Minute // Default to 15 minutes if not configured
 	}
-	expiry := time.Now().UTC().Add(activationExpiry)
 
-	if err := s.verificationTokenRepo.StoreActivationToken(ctx, req.AuthID, activationCode, expiry); err != nil {
+	if err := s.verificationTokenRepo.StoreActivationToken(ctx, req.AuthID, activationCode, activationExpiry); err != nil {
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to store activation code")
-		return fmt.Errorf("failed to store activation code: %w", err)
+		return fmt.Errorf("%w", err)
 	}
 
 	appName := s.cfg.App.Name

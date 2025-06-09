@@ -4,12 +4,11 @@ import (
 	"crypto"
 	"fmt"
 
-	stdlog "log"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"github.com/tadglines/go-pkgs/crypto/srp"
 	"golang.org/x/oauth2"
@@ -135,7 +134,7 @@ func LoadConfig() (*Config, error) {
 	// Load configuration
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			stdlog.Println("Config file (config.yaml) not found, using defaults and environment variables.")
+			log.Println("Config file (config.yaml) not found, using defaults and environment variables.")
 
 		} else {
 			return nil, err // Return the original error
@@ -145,19 +144,19 @@ func LoadConfig() (*Config, error) {
 	// JWT Secret
 	jwtSecret := viper.GetString("app.jwtSecret")
 	if jwtSecret == "a_very_secret_key_change_me_in_config_yaml" || jwtSecret == "a_very_secret_key_change_me" {
-		log.Warn().Msg("Using default JWT secret. Set app.jwtSecret in your config.yaml or the JWT_SECRET environment variable.")
+		log.Println("Using default JWT secret. Set app.jwtSecret in your config.yaml or the JWT_SECRET environment variable.")
 	}
 
 	// SRP Configuration
 	srpGroup := viper.GetString("srp.group")
 	if _, err := srp.GetGroup(srpGroup); err != nil {
 		srpGroup = "rfc5054.4096"
-		log.Warn().Str("originalGroup", viper.GetString("srp.group")).Str("defaultGroup", srpGroup).Msg("Invalid SRP group in srp.group, defaulting")
+		log.Println("Invalid SRP group in srp.group, defaulting to rfc5054.4096")
 	}
 
 	srpAuthStateExpiryDuration := viper.GetDuration("srp.authStateExpiry")
 	if srpAuthStateExpiryDuration <= 0 {
-		log.Warn().Msg("Invalid or missing srp.authStateExpiry, defaulting to 5m.")
+		log.Println("Invalid or missing srp.authStateExpiry, defaulting to 5m.")
 		srpAuthStateExpiryDuration = 5 * time.Minute
 	}
 
@@ -172,20 +171,20 @@ func LoadConfig() (*Config, error) {
 		hashingAlgorithm = crypto.SHA512
 	default:
 		hashingAlgorithm = crypto.SHA512
-		log.Warn().Str("originalAlgo", hashingAlgorithmStr).Msg("Invalid hashing algorithm in srp.hashingAlgorithm, defaulting to SHA512")
+		log.Println("Invalid hashing algorithm in srp.hashingAlgorithm, defaulting to SHA512")
 	}
 
 	// Token Configuration
 	accessTokenDuration := viper.GetDuration("sessionConfig.accessTokenDuration")
 	if accessTokenDuration <= 0 {
-		log.Warn().Msg("Invalid or missing sessionConfig.accessTokenDuration, defaulting to 1h")
+		log.Println("Invalid or missing sessionConfig.accessTokenDuration, defaulting to 1h")
 		accessTokenDuration = 1 * time.Hour
 	}
 
-	validationTokenExpiry := viper.GetDuration("security.validationDuration")
-	if validationTokenExpiry <= 0 {
-		log.Warn().Msg("Invalid or missing security.validationDuration, defaulting to 15m.")
-		validationTokenExpiry = 15 * time.Minute
+	validationTokenDuration := viper.GetDuration("security.validationTokenDuration")
+	if validationTokenDuration <= 0 {
+		log.Println("Invalid or missing security.validationTokenDuration, defaulting to 5m")
+		validationTokenDuration = 5 * time.Minute
 	}
 
 	// Database Configuration
@@ -241,7 +240,7 @@ func LoadConfig() (*Config, error) {
 		},
 		SessionConfig: SessionConfig{
 			AccessTokenDuration: accessTokenDuration,
-			ValidationDuration:  validationTokenExpiry,
+			ValidationDuration:  validationTokenDuration,
 		},
 		SMTP: SmtpConfig{
 			Host:     viper.GetString("smtp.host"),

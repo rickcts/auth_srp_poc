@@ -87,6 +87,9 @@ func (h *SRPAuthHandler) GenerateCodeAndSendActivationEmail(c echo.Context) erro
 		if errors.Is(err, service.ErrUserAlreadyActivated) {
 			return echo.NewHTTPError(http.StatusConflict, "User is already activated")
 		}
+		if errors.Is(err, repository.ErrTooManyRequests) {
+			return echo.NewHTTPError(http.StatusTooManyRequests, err.Error())
+		}
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to send activation email")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send activation email")
 	}
@@ -110,6 +113,7 @@ func (h *SRPAuthHandler) ActivateAccount(c echo.Context) error {
 		if errors.Is(err, repository.ErrVerificationTokenNotFound) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid, expired, or already consumed activation code")
 		}
+
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to activate user")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to activate user")
 	}
@@ -177,6 +181,9 @@ func (h *SRPAuthHandler) InitiatePasswordReset(c echo.Context) error {
 	ctx := c.Request().Context()
 	err := h.SRPAuthService.InitiatePasswordReset(ctx, *req)
 	if err != nil {
+		if errors.Is(err, repository.ErrTooManyRequests) {
+			return echo.NewHTTPError(http.StatusTooManyRequests, err.Error())
+		}
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Password reset initiation failed")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Password reset initiation failed")
 	}
@@ -260,6 +267,9 @@ func (h *SRPAuthHandler) InitiatePasswordChangeVerification(c echo.Context) erro
 	ctx := c.Request().Context()
 	resp, err := h.SRPAuthService.InitiatePasswordChangeVerification(ctx, authID)
 	if err != nil {
+		if errors.Is(err, repository.ErrTooManyRequests) {
+			return echo.NewHTTPError(http.StatusTooManyRequests, err.Error())
+		}
 		log.Error().Err(err).Str("authId", authID).Msg("Failed to initiate password change verification")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to initiate password change verification")
 	}

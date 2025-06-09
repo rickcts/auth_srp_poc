@@ -36,16 +36,31 @@ func makeTokenStorageKey(authID, tokenType string) string {
 
 // storeToken stores the token_value at a key derived from authID and type.
 // This assumes one token of a given type per authID.
-func (r *RedisVerificationTokenRepository) storeToken(ctx context.Context, authID, tokenType, tokenValue string, expiryTime time.Time) error {
+func (r *RedisVerificationTokenRepository) storeToken(ctx context.Context, authID, tokenType, tokenValue string, expireIn time.Duration) error {
 	key := makeTokenStorageKey(authID, tokenType)
-	duration := time.Until(expiryTime)
 
-	if duration <= 0 {
-		return fmt.Errorf("expiry time must be in the future")
+	if expireIn <= 0 {
+		return fmt.Errorf("expireIn duration must be positive")
+	}
+
+	exists, err := r.client.Exists(ctx, key).Result()
+	if err != nil {
+		return fmt.Errorf("failed to check key existence: %w", err)
+	}
+
+	if exists > 0 {
+		ttl, err := r.client.TTL(ctx, key).Result()
+		if err != nil {
+			return fmt.Errorf("failed to get TTL for key %s: %w", key, err)
+		}
+
+		if ttl > expireIn-time.Minute {
+			return fmt.Errorf("%w please wait %v before requesting a new token", repository.ErrTooManyRequests, ttl-(expireIn-time.Minute))
+		}
 	}
 
 	// If a previous token for this authID and type existed, storing a new one overwrites it.
-	err := r.client.Set(ctx, key, tokenValue, duration).Err()
+	err = r.client.Set(ctx, key, tokenValue, expireIn).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store token value in redis (key: %s): %w", key, err)
 	}
@@ -121,8 +136,8 @@ func (r *RedisVerificationTokenRepository) deleteTokensForAuthID(ctx context.Con
 
 // --- Password Reset Token Methods ---
 
-func (r *RedisVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expiry time.Time) error {
-	return r.storeToken(ctx, authID, passwordResetTokenType, token, expiry)
+func (r *RedisVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expireIn time.Duration) error {
+	return r.storeToken(ctx, authID, passwordResetTokenType, token, expireIn)
 }
 
 func (r *RedisVerificationTokenRepository) ValidateAndConsumePasswordResetToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {
@@ -139,8 +154,8 @@ func (r *RedisVerificationTokenRepository) DeletePasswordResetTokensForAuthID(ct
 
 // --- Activation Token Methods ---
 
-func (r *RedisVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, token string, expiryTime time.Time) error {
-	return r.storeToken(ctx, authID, activationTokenType, token, expiryTime)
+func (r *RedisVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, token string, expireIn time.Duration) error {
+	return r.storeToken(ctx, authID, activationTokenType, token, expireIn)
 }
 
 func (r *RedisVerificationTokenRepository) ValidateAndConsumeActivationToken(ctx context.Context, authIDFromRequest string, tokenFromRequest string) (string, error) {

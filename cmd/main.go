@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	stdlog "log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,15 +11,16 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/ent"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
-	applogger "github.com/SimpnicServerTeam/scs-aaa-server/internal/logger"
-	ent_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/ent"
+	"github.com/SimpnicServerTeam/scs-aaa-server/internal/logger"
+	entrepo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/ent"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/memory"
-	redis_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/redis"
+	redisrepo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/redis"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/router"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/server"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
+
 	"github.com/redis/go-redis/v9"
-	zlog "github.com/rs/zerolog/log" // zerolog's global logger
+	"github.com/rs/zerolog/log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -27,24 +28,31 @@ import (
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		stdlog.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	applogger.Init(cfg.App.LogLevel, cfg.App.Env)
+	logger.Init(cfg.App.LogLevel, cfg.App.Env)
 	redisClient := redis.NewClient(cfg.RedisSettings)
+	// Test Redis connection
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to Redis")
+	} else {
+		log.Info().Msg("Successfully connected to Redis")
+	}
+
 	entClient, err := ent.Open(cfg.Database.DatabaseDriver, cfg.Database.DSN)
 	if err != nil {
-		zlog.Fatal().Err(err).Msg("Failed opening connection to database")
+		log.Fatal().Err(err).Msg("Failed opening connection to database")
 	}
 	defer entClient.Close()
 	// Run the auto migration tool.
 	if err := entClient.Schema.Create(context.Background()); err != nil {
-		zlog.Fatal().Err(err).Msg("Failed creating schema resources")
+		log.Fatal().Err(err).Msg("Failed creating schema resources")
 	}
 
-	sessionRepo := redis_repo.NewRedisSessionRepository(redisClient)
-	userRepo := ent_repo.NewEntUserRepository(entClient)
-	verificationTokenRepo := redis_repo.NewRedisVerificationTokenRepository(redisClient)
+	sessionRepo := redisrepo.NewRedisSessionRepository(redisClient)
+	userRepo := entrepo.NewEntUserRepository(entClient)
+	verificationTokenRepo := redisrepo.NewRedisVerificationTokenRepository(redisClient)
 	stateRepo := memory.NewMemoryStateRepository()
 
 	tokenService := service.NewTokenService(cfg.App.JWTSecret)
@@ -52,7 +60,7 @@ func main() {
 	sessionService := service.NewSessionService(sessionRepo, userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
 
-	app := server.New(zlog.Logger)
+	app := server.New(log.Logger)
 
 	router.SetupUserRoutes(app, handlers.NewUserHandler(tokenService, sessionService, userService), cfg)
 	router.SetupSRPRoutes(app, handlers.NewSRPAuthHandler(
@@ -74,19 +82,18 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		zlog.Info().Str("port", cfg.App.Port).Msg("Server starting")
 		if err := app.Start(":" + cfg.App.Port); err != nil && err != http.ErrServerClosed {
-			zlog.Fatal().Err(err).Msg("Failed to start server")
+			log.Fatal().Err(err).Msg("Failed to start server")
 		}
 	}()
 
 	<-quit
-	zlog.Info().Msg("Shutting down server...")
+	log.Info().Msg("Shutting down server...")
 
 	if err := app.Shutdown(context.Background()); err != nil {
-		zlog.Fatal().Err(err).Msg("Server forced to shutdown")
+		log.Fatal().Err(err).Msg("Server forced to shutdown")
 	}
 
-	zlog.Info().Msg("Server stopped gracefully.")
+	log.Info().Msg("Server stopped gracefully.")
 
 }

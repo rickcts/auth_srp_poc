@@ -13,11 +13,11 @@ type MockVerificationTokenRepository struct {
 }
 
 // StorePasswordResetToken provides a mock function with given fields: ctx, authID, token, expiryTime
-func (_m *MockVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expiryTime time.Time) error {
+func (_m *MockVerificationTokenRepository) StorePasswordResetToken(ctx context.Context, authID string, token string, expiryTime time.Duration) error {
 	ret := _m.Called(ctx, authID, token, expiryTime)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Time) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) error); ok {
 		r0 = rf(ctx, authID, token, expiryTime)
 	} else {
 		r0 = ret.Error(0)
@@ -71,11 +71,11 @@ func (_m *MockVerificationTokenRepository) DeletePasswordResetTokensForAuthID(ct
 }
 
 // StoreActivationToken provides a mock function with given fields: ctx, authID, code, expiry
-func (_m *MockVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, code string, expiry time.Time) error {
+func (_m *MockVerificationTokenRepository) StoreActivationToken(ctx context.Context, authID string, code string, expiry time.Duration) error {
 	ret := _m.Called(ctx, authID, code, expiry)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Time) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) error); ok {
 		r0 = rf(ctx, authID, code, expiry)
 	} else {
 		r0 = ret.Error(0)
