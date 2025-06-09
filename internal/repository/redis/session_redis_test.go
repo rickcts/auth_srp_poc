@@ -45,11 +45,11 @@ func TestRedisSessionRepository_StoreSession(t *testing.T) {
 		defer mr.Close()
 
 		session := &models.Session{
-			SessionID: "sess123",
-			UserID:    1,
-			Username:  "user1",
-			Expiry:    time.Now().UTC().Add(1 * time.Hour),
-			CreatedAt: time.Now().UTC(),
+			SessionID:   "sess123",
+			UserID:      1,
+			DisplayName: "user1",
+			Expiry:      time.Now().UTC().Add(1 * time.Hour),
+			CreatedAt:   time.Now().UTC(),
 		}
 
 		err := repo.StoreSession(ctx, session)

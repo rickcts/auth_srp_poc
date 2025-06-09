@@ -32,6 +32,8 @@ type UserRepository interface {
 	UpdateUserInfoByAuthID(ctx context.Context, authID string, displayName string) error
 
 	DeleteUser(ctx context.Context, authID string) error
+
+	CreateUserAuthEvent(ctx context.Context, host string, errorCode int) error
 }
 
 // Common errors

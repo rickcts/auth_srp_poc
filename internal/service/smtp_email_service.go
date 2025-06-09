@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/smtp"
 	"strings"
 	"time"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
+	"github.com/rs/zerolog/log"
 )
 
 var _ EmailService = (*SMTPEmailService)(nil)
@@ -59,7 +59,7 @@ func SendToMail(user, password, smtpAddr, authHostname, subject, date, body, mai
 // NewSMTPEmailService creates a new SMTPEmailService.
 func NewSMTPEmailService(smtpCfg *config.SmtpConfig) *SMTPEmailService {
 	if smtpCfg == nil {
-		log.Println("[SMTPEmailService] Warning: SMTP configuration is nil. Email sending will likely fail.")
+		log.Warn().Msg("SMTP configuration is nil. Email sending will likely fail.")
 		// Return a service that will log errors but not panic
 		return &SMTPEmailService{cfg: &config.SmtpConfig{}}
 	}
@@ -70,7 +70,7 @@ func NewSMTPEmailService(smtpCfg *config.SmtpConfig) *SMTPEmailService {
 // The `resetCode` is the 6-digit code. `resetContextInfo` can be used for branding or instructions if needed, otherwise can be empty.
 func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, resetContextInfo string) error {
 	if s.cfg.Host == "" || s.cfg.User == "" || s.cfg.Port == "" {
-		log.Printf("[SMTPEmailService] ERROR: SMTP host, user, or port not configured. Cannot send password reset email to %s.", toEmail)
+		log.Error().Str("toEmail", toEmail).Msg("SMTP host, user, or port not configured. Cannot send password reset email.")
 		return fmt.Errorf("SMTP service not fully configured (host, user, or port missing)")
 	}
 
@@ -82,18 +82,18 @@ func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, 
 
 	err := SendToMail(s.cfg.User, s.cfg.Password, smtpAddr, s.cfg.Host, subject, date, body, "text", s.cfg.User, []string{toEmail}, nil, nil)
 	if err != nil {
-		log.Printf("[SMTPEmailService] ERROR: Failed to send password reset email to %s: %v", toEmail, err)
+		log.Error().Err(err).Str("toEmail", toEmail).Msg("Failed to send password reset email")
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	log.Printf("[SMTPEmailService] Password reset email sent to %s", toEmail)
+	log.Info().Str("toEmail", toEmail).Msg("Password reset email sent")
 	return nil
 }
 
 // SendActivationEmail sends an account activation email.
 func (s *SMTPEmailService) SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error {
 	if s.cfg.Host == "" || s.cfg.User == "" || s.cfg.Port == "" {
-		log.Printf("[SMTPEmailService] ERROR: SMTP host, user, or port not configured. Cannot send activation email to %s.", toEmail)
+		log.Error().Str("toEmail", toEmail).Msg("SMTP host, user, or port not configured. Cannot send activation email.")
 		return fmt.Errorf("SMTP service not fully configured (host, user, or port missing)")
 	}
 
@@ -104,10 +104,10 @@ func (s *SMTPEmailService) SendActivationEmail(ctx context.Context, toEmail, act
 
 	err := SendToMail(s.cfg.User, s.cfg.Password, smtpAddr, s.cfg.Host, subject, date, body, "text", s.cfg.User, []string{toEmail}, nil, nil)
 	if err != nil {
-		log.Printf("[SMTPEmailService] ERROR: Failed to send activation email to %s: %v", toEmail, err)
+		log.Error().Err(err).Str("toEmail", toEmail).Msg("Failed to send activation email")
 		return fmt.Errorf("failed to send activation email: %w", err)
 	}
 
-	log.Printf("[SMTPEmailService] Activation email sent to %s", toEmail)
+	log.Info().Str("toEmail", toEmail).Msg("Activation email sent")
 	return nil
 }

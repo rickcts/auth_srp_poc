@@ -7,17 +7,20 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func SetupUserRoutes(e *echo.Echo, authHandler *handlers.UserHandler, cfg *config.Config) {
-	api := e.Group("/api/auth/user")
+func SetupUserRoutes(e *echo.Echo, userHandler *handlers.UserHandler, cfg *config.Config) {
+	sessionGroup := e.Group("/api/auth/sessions")
 
-	api.Use(middleware.JWTMiddleware(cfg.App.JWTSecret))
+	sessionGroup.Use(middleware.JWTMiddleware(cfg.App.JWTSecret))
+	sessionGroup.GET("/list", userHandler.GetUserSessions)
+	sessionGroup.POST("/verify", userHandler.VerifyToken)
+	sessionGroup.POST("/logout", userHandler.Logout)
+	sessionGroup.POST("/logout-all", userHandler.LogoutAllSessions)
 
-	api.GET("/sessions", authHandler.GetUserSessions)
-	api.POST("/verify", authHandler.VerifyToken)
-	api.POST("/logout", authHandler.Logout)
-	api.POST("/logout-all", authHandler.LogoutAllSessions)
-	api.PUT("user", authHandler.UpdateUser)
-	api.DELETE("user", authHandler.DeleteUser)
+	userGroup := e.Group("/api/auth/users")
+
+	userGroup.Use(middleware.JWTMiddleware(cfg.App.JWTSecret))
+	userGroup.PUT("/", userHandler.UpdateUser)
+	userGroup.DELETE("/", userHandler.DeleteUser)
 }
 
 func SetupSRPRoutes(e *echo.Echo, authHandler *handlers.SRPAuthHandler, cfg *config.Config) {

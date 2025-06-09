@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
+	"github.com/rs/zerolog/log"
 )
 
 type SessionService struct {
@@ -29,19 +29,19 @@ func (s *SessionService) SignOut(ctx context.Context, sessionToken string) error
 		return errors.New("session token cannot be empty")
 	}
 
-	log.Printf("[AuthService.SignOut] Attempting to sign out session with token: %s", sessionToken)
+	log.Info().Str("sessionTokenPrefix", безопасныйПрефикс(sessionToken, 10)).Msg("Attempting to sign out session")
 	err := s.sessionRepo.DeleteSession(ctx, sessionToken)
 	if err != nil {
 		// It's okay to be already expired or not found
 		if errors.Is(err, repository.ErrSessionNotFound) {
-			log.Printf("[AuthService.SignOut] Session token '%s' not found or already invalIDated. ConsIDered successful.", sessionToken)
+			log.Info().Str("sessionTokenPrefix", безопасныйПрефикс(sessionToken, 10)).Msg("Session token not found or already invalidated during sign out. Considered successful.")
 			return nil
 		}
-		log.Printf("[AuthService.SignOut] ERROR: Failed to delete session for token '%s': %v", sessionToken, err)
+		log.Error().Err(err).Str("sessionTokenPrefix", безопасныйПрефикс(sessionToken, 10)).Msg("Failed to delete session during sign out")
 		return fmt.Errorf("failed to sign out: %w", err)
 	}
 
-	log.Printf("[AuthService.SignOut] SUCCESS: Session invalIDated for token: %s", sessionToken)
+	log.Info().Str("sessionTokenPrefix", безопасныйПрефикс(sessionToken, 10)).Msg("Session invalidated successfully")
 	return nil
 }
 
@@ -52,19 +52,20 @@ func (s *SessionService) GetUserSessions(ctx context.Context, authID string) (*m
 
 	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
 	if err != nil {
+		log.Warn().Err(err).Str("authId", authID).Msg("Failed to get user info for GetUserSessions")
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
 	userID := userInfo.ID
 
-	log.Printf("[AuthService.GetUserSessions] Attempting to get sessions for UserID: %v", userID)
+	log.Info().Int64("userId", userID).Msg("Attempting to get user sessions")
 
 	sessions, err := s.sessionRepo.GetSessions(ctx, userID)
 	if err != nil {
-		log.Printf("[AuthService.GetUserSessions] ERROR: Failed to get sessions for UserID '%v': %v", userID, err)
+		log.Error().Err(err).Int64("userId", userID).Msg("Failed to get user sessions from repository")
 		return nil, fmt.Errorf("failed to get user sessions: %w", err)
 	}
 
-	log.Printf("[AuthService.GetUserSessions] SUCCESS: Retrieved %d sessions for UserID: %v", len(sessions), userID)
+	log.Info().Int("sessionCount", len(sessions)).Int64("userId", userID).Msg("Successfully retrieved user sessions")
 	return &models.GetUserSessionsResponse{Sessions: sessions}, nil
 }
 
@@ -75,11 +76,11 @@ func (s *SessionService) ExtendUserSession(ctx context.Context, currentSessionTo
 		return nil, errors.New("current session token cannot be empty")
 	}
 
-	log.Printf("[AuthService.ExtendUserSession] Attempting to extend session for token: %s", currentSessionToken)
+	log.Info().Str("currentTokenPrefix", безопасныйПрефикс(currentSessionToken, 10)).Msg("Attempting to extend user session")
 
 	currentSession, err := s.sessionRepo.GetSession(ctx, currentSessionToken)
 	if err != nil {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to get current session for token '%s': %v", currentSessionToken, err)
+		log.Warn().Err(err).Str("currentTokenPrefix", безопасныйПрефикс(currentSessionToken, 10)).Msg("Failed to get current session for extension")
 		if errors.Is(err, repository.ErrSessionNotFound) {
 			return nil, fmt.Errorf("session not found or expired, cannot extend: %w", err)
 		}
@@ -87,7 +88,7 @@ func (s *SessionService) ExtendUserSession(ctx context.Context, currentSessionTo
 	}
 
 	if currentSession.IsExpired() {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Current session for token '%s' (User: %v) is expired.", currentSessionToken, currentSession.AuthID)
+		log.Warn().Str("currentTokenPrefix", безопасныйПрефикс(currentSessionToken, 10)).Str("authId", currentSession.AuthID).Msg("Current session is expired, cannot extend.")
 		// Proactively delete it if found expired here, though GetSession implementation should handle this.
 		_ = s.sessionRepo.DeleteSession(ctx, currentSessionToken)
 		return nil, repository.ErrSessionNotFound
@@ -96,16 +97,16 @@ func (s *SessionService) ExtendUserSession(ctx context.Context, currentSessionTo
 	authID := currentSession.AuthID
 	userID := currentSession.UserID
 
-	log.Printf("[AuthService.ExtendUserSession] Current session for token '%s' (User: %v) is valid. Proceeding with extension.", currentSessionToken, authID)
+	log.Info().Str("currentTokenPrefix", безопасныйПрефикс(currentSessionToken, 10)).Str("authId", authID).Msg("Current session is valid. Proceeding with extension.")
 
 	err = s.sessionRepo.DeleteSession(ctx, currentSessionToken)
 	if err != nil && !errors.Is(err, repository.ErrSessionNotFound) {
-		log.Printf("[AuthService.ExtendUserSession] WARN: Failed to delete old session for token '%s' (User: %v): %v", currentSessionToken, authID, err)
+		log.Warn().Err(err).Str("currentTokenPrefix", безопасныйПрефикс(currentSessionToken, 10)).Str("authId", authID).Msg("Failed to delete old session during extension, but continuing.")
 	}
 
 	newSessionToken, newExpiry, err := s.tokenSvc.GenerateToken(authID)
 	if err != nil {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to generate new token for user '%v': %v", authID, err)
+		log.Error().Err(err).Str("authId", authID).Msg("Failed to generate new token for session extension")
 		return nil, fmt.Errorf("failed to generate new session token: %w", err)
 	}
 
@@ -117,11 +118,11 @@ func (s *SessionService) ExtendUserSession(ctx context.Context, currentSessionTo
 	}
 
 	if err := s.sessionRepo.StoreSession(ctx, newSession); err != nil {
-		log.Printf("[AuthService.ExtendUserSession] ERROR: Failed to store new session for user '%v' (New Token: %s): %v", authID, newSessionToken, err)
+		log.Error().Err(err).Str("authId", authID).Str("newTokenPrefix", безопасныйПрефикс(newSessionToken, 10)).Msg("Failed to store new session during extension")
 		return nil, fmt.Errorf("failed to store new session: %w", err)
 	}
 
-	log.Printf("[AuthService.ExtendUserSession] SUCCESS: Session extended for user '%v'. New Token: %s, New Expiry: %v", authID, newSessionToken, newExpiry)
+	log.Info().Str("authId", authID).Str("newTokenPrefix", безопасныйПрефикс(newSessionToken, 10)).Time("newExpiry", newExpiry).Msg("Session extended successfully")
 
 	return &models.ExtendedSessionResponse{
 		NewSessionToken: newSessionToken,
@@ -134,11 +135,11 @@ func (s *SessionService) VerifySessionToken(ctx context.Context, sessionTokenID 
 		return nil, errors.New("session token cannot be empty")
 	}
 
-	log.Printf("[AuthService.VerifySessionToken] Attempting to verify session token from store: %s", sessionTokenID)
+	log.Info().Str("sessionTokenPrefix", безопасныйПрефикс(sessionTokenID, 10)).Msg("Attempting to verify session token from store")
 
 	session, err := s.sessionRepo.GetSession(ctx, sessionTokenID)
 	if err != nil {
-		log.Printf("[AuthService.VerifySessionToken] Failed to get session from store for token '%s': %v", sessionTokenID, err)
+		log.Warn().Err(err).Str("sessionTokenPrefix", безопасныйПрефикс(sessionTokenID, 10)).Msg("Failed to get session from store for verification")
 		if errors.Is(err, repository.ErrSessionNotFound) {
 			return nil, fmt.Errorf("session not found or invalIDated: %w", err)
 		}
@@ -146,12 +147,12 @@ func (s *SessionService) VerifySessionToken(ctx context.Context, sessionTokenID 
 	}
 
 	if session.IsExpired() { // Check server-sIDe expiry
-		log.Printf("[AuthService.VerifySessionToken] Session token '%s' (User: %v) found in store but is expired.", sessionTokenID, session.UserID)
+		log.Warn().Str("sessionTokenPrefix", безопасныйПрефикс(sessionTokenID, 10)).Int64("userId", session.UserID).Msg("Session token found in store but is expired.")
 		_ = s.sessionRepo.DeleteSession(ctx, sessionTokenID) // Clean up expired session
 		return nil, fmt.Errorf("session expired: %w", repository.ErrSessionNotFound)
 	}
 
-	log.Printf("[AuthService.VerifySessionToken] SUCCESS: Session token is valid for UserID: %v", session.UserID)
+	log.Info().Int64("userId", session.UserID).Str("sessionTokenPrefix", безопасныйПрефикс(sessionTokenID, 10)).Msg("Session token is valid")
 	return &models.VerifyTokenResponse{
 		SessionID: sessionTokenID,
 		UserID:    session.UserID,
@@ -166,19 +167,26 @@ func (s *SessionService) SignOutUserSessions(ctx context.Context, authID string,
 	}
 	user, err := s.userRepo.GetUserInfoByAuthID(ctx, authID)
 	if err != nil {
-		log.Printf("[AuthService.SignOutUserSessions] ERROR: Failed to get user info for AuthID '%s': %v", authID, err)
+		log.Error().Err(err).Str("authId", authID).Msg("Failed to get user info for SignOutUserSessions")
 		return 0, fmt.Errorf("failed to get user info: %w", err)
 	}
 	userID := user.ID // Now safe to access user.ID
 
-	log.Printf("[AuthService.SignOutUserSessions] Attempting to sign out all sessions for UserID: %v, excluding %d tokens", userID, len(currentSessionTokenToExclude))
+	log.Info().Int64("userId", userID).Int("excludeCount", len(currentSessionTokenToExclude)).Msg("Attempting to sign out all sessions for user")
 
 	deletedCount, err := s.sessionRepo.DeleteUserSessions(ctx, userID, currentSessionTokenToExclude...)
 	if err != nil {
-		log.Printf("[AuthService.SignOutUserSessions] ERROR: Failed to delete sessions for UserID '%v': %v", userID, err)
+		log.Error().Err(err).Int64("userId", userID).Msg("Failed to delete user sessions from repository")
 		return 0, fmt.Errorf("failed to sign out user sessions: %w", err)
 	}
 
-	log.Printf("[AuthService.SignOutUserSessions] SUCCESS: Deleted %d sessions for UserID: %v", deletedCount, userID)
+	log.Info().Int64("deletedCount", deletedCount).Int64("userId", userID).Msg("Successfully signed out user sessions")
 	return deletedCount, nil
+}
+
+func безопасныйПрефикс(s string, length int) string {
+	if len(s) > length {
+		return s[:length]
+	}
+	return s
 }

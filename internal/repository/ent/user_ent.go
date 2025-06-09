@@ -164,7 +164,7 @@ func (r *EntUserRepository) DeleteUser(ctx context.Context, authID string) error
 	return nil
 }
 
-func (r *EntUserRepository) StoreAuthEvent(ctx context.Context, host string, errorCode int) error {
+func (r *EntUserRepository) CreateUserAuthEvent(ctx context.Context, host string, errorCode int) error {
 	_, err := r.client.UserAuthEvent.
 		Create().
 		SetHost(host).

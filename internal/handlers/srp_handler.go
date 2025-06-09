@@ -8,6 +8,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
 )
@@ -61,10 +62,9 @@ func (h *SRPAuthHandler) Register(c echo.Context) error {
 		if errors.Is(err, repository.ErrUserExists) { // Or check for the new error from service if you changed it
 			return echo.NewHTTPError(http.StatusConflict, "Username already exists")
 		}
-		// Log the internal error details here in a real app
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Registration failed")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Registration failed")
 	}
-
 	return c.NoContent(http.StatusCreated) // Modified
 }
 
@@ -87,7 +87,7 @@ func (h *SRPAuthHandler) GenerateCodeAndSendActivationEmail(c echo.Context) erro
 		if errors.Is(err, service.ErrUserAlreadyActivated) {
 			return echo.NewHTTPError(http.StatusConflict, "User is already activated")
 		}
-		// Log internal error details
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to send activation email")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to send activation email")
 	}
 
@@ -110,7 +110,7 @@ func (h *SRPAuthHandler) ActivateAccount(c echo.Context) error {
 		if errors.Is(err, repository.ErrVerificationTokenNotFound) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid, expired, or already consumed activation code")
 		}
-
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to activate user")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to activate user")
 	}
 
@@ -135,8 +135,7 @@ func (h *SRPAuthHandler) AuthStep1(c echo.Context) error {
 		if errors.Is(err, repository.ErrUserNotActivated) {
 			return echo.NewHTTPError(http.StatusForbidden, "User has not been activated")
 		}
-
-		// Log internal error details
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Authentication initiation failed")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Authentication initiation failed")
 	}
 
@@ -160,6 +159,7 @@ func (h *SRPAuthHandler) AuthStep2(c echo.Context) error {
 		if errors.Is(err, service.ErrSRPAuthenticationFailed) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid client credentials")
 		}
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Authentication verification failed")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Authentication verification failed")
 	}
 
@@ -177,6 +177,7 @@ func (h *SRPAuthHandler) InitiatePasswordReset(c echo.Context) error {
 	ctx := c.Request().Context()
 	err := h.SRPAuthService.InitiatePasswordReset(ctx, *req)
 	if err != nil {
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Password reset initiation failed")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Password reset initiation failed")
 	}
 
@@ -203,10 +204,12 @@ func (h *SRPAuthHandler) ValidatePasswordResetToken(c echo.Context) error {
 	if err != nil {
 		if resp != nil && !resp.IsValid {
 			// The client should check the IsValid field.
+			// Log the specific reason for invalidity if available from err or resp
+			log.Warn().Err(err).Str("authId", bindReq.AuthID).Str("token", bindReq.Token).Msg("Password reset token validation failed (IsValid=false)")
 			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
-		// For other errors (e.g., service's own pre-check failures or unexpected issues where resp might be nil)
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		log.Error().Err(err).Str("authId", bindReq.AuthID).Str("token", bindReq.Token).Msg("Password reset token validation failed with error")
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid or expired password reset token.") // Generic message to client
 	}
 
 	// Success: err is nil, resp is non-nil with IsValid: true
@@ -226,6 +229,7 @@ func (h *SRPAuthHandler) CompletePasswordReset(c echo.Context) error {
 	ctx := c.Request().Context()
 	err := h.SRPAuthService.CompletePasswordReset(ctx, *req)
 	if err != nil {
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Password reset completion failed")
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	return c.JSON(http.StatusOK, echo.Map{"message": "Password has been reset successfully."})
@@ -256,7 +260,7 @@ func (h *SRPAuthHandler) InitiatePasswordChangeVerification(c echo.Context) erro
 	ctx := c.Request().Context()
 	resp, err := h.SRPAuthService.InitiatePasswordChangeVerification(ctx, authID)
 	if err != nil {
-		// Log internal error details
+		log.Error().Err(err).Str("authId", authID).Msg("Failed to initiate password change verification")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to initiate password change verification")
 	}
 	return c.JSON(http.StatusOK, resp)
@@ -293,8 +297,10 @@ func (h *SRPAuthHandler) ConfirmPasswordChange(c echo.Context) error {
 	err = h.SRPAuthService.ConfirmPasswordChange(ctx, authID, *req)
 	if err != nil {
 		if errors.Is(err, service.ErrSRPAuthenticationFailed) || errors.Is(err, repository.ErrStateNotFound) {
+			log.Warn().Err(err).Str("authId", authID).Msg("Password change confirmation failed due to auth/state error")
 			return echo.NewHTTPError(http.StatusUnauthorized, err.Error()) // "current password verification failed" or "session expired"
 		}
+		log.Error().Err(err).Str("authId", authID).Msg("Failed to confirm password change")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to confirm password change")
 	}
 	return c.NoContent(http.StatusOK) // Or http.StatusOk with a success message

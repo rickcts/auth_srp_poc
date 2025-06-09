@@ -6,12 +6,14 @@ import (
 
 // Session represents an active user login session.
 type Session struct {
-	SessionID string    `json:"sessionId"` // Unique ID for this session (e.g., a secure random string or UUID)
-	UserID    int64     `json:"userId"`    // The ID of the user associated with this session
-	AuthID    string    `json:"authId"`    // The ID of the logged-in method
-	Username  string    `json:"username"`  // The username (can be useful)
-	CreatedAt time.Time `json:"createdAt"` // When the session was created
-	Expiry    time.Time `json:"expiry"`    // When the session expires
+	SessionID   string    `json:"sessionId"`   // Unique ID for this session (e.g., a secure random string or UUID)
+	UserID      int64     `json:"userId"`      // The ID of the user associated with this session
+	AuthID      string    `json:"authId"`      // The ID of the logged-in method
+	DisplayName string    `json:"displayName"` // The displayName
+	Host        string    `json:"host"`        // The host of the the client
+	UserAgent   string    `json:"userAgent"`   // The useragent of the request
+	CreatedAt   time.Time `json:"createdAt"`   // When the session was created
+	Expiry      time.Time `json:"expiry"`      // When the session expires
 }
 
 // IsExpired checks if the session has expired.

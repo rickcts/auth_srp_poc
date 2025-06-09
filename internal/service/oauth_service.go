@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/models"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 )
 
@@ -45,14 +45,14 @@ func (s *OAuthService) GetAuthCodeURL(state string) string {
 func (s *OAuthService) ExchangeCode(ctx context.Context, code string) (*oauth2.Token, error) {
 	token, err := s.oAuthConfig.Exchange(ctx, code)
 	if err != nil {
-		log.Printf("Error exchanging code for token: %v\n", err)
+		log.Error().Err(err).Msg("Error exchanging OAuth code for token")
 		return nil, fmt.Errorf("failed to exchange code: %w", err)
 	}
 	if !token.Valid() {
-		log.Println("Received invalid token")
+		log.Warn().Msg("Received invalid OAuth token after exchange")
 		return nil, errors.New("received invalid token")
 	}
-	log.Printf("Token obtained successfully. Access Token length: %d\n", len(token.AccessToken))
+	log.Info().Int("accessTokenLength", len(token.AccessToken)).Msg("OAuth token obtained successfully")
 	return token, nil
 }
 
@@ -62,15 +62,14 @@ func (s *OAuthService) ExchangeCodeMobile(ctx context.Context, code, codeVerifie
 
 	oauth2token, err := s.oAuthConfig.Exchange(ctx, code, pkceOption)
 	if err != nil {
-		log.Printf("Error exchanging code for token (Mobile Flow): %v\n", err)
+		log.Error().Err(err).Str("provider", tokenProvider).Msg("Error exchanging code for token (Mobile Flow)")
 		return nil, fmt.Errorf("failed to exchange code: %w", err)
 	}
 	if !oauth2token.Valid() {
-		log.Println("Received invalid token (Mobile Flow)")
+		log.Warn().Str("provider", tokenProvider).Msg("Received invalid token (Mobile Flow)")
 		return nil, errors.New("received invalid token")
 	}
-
-	log.Printf("Token obtained successfully (Mobile Flow). Access Token length: %d\n", len(oauth2token.AccessToken))
+	log.Info().Str("provider", tokenProvider).Int("accessTokenLength", len(oauth2token.AccessToken)).Msg("Token obtained successfully (Mobile Flow)")
 	return oauth2token, nil
 }
 
@@ -82,7 +81,7 @@ func (s *OAuthService) VerifyToken(ctx context.Context, oauth2Token *oauth2.Toke
 
 	provider, err := oidc.NewProvider(ctx, providerURL)
 	if err != nil {
-		log.Printf("Failed to create OIDC provider: %v\n", err)
+		log.Error().Err(err).Str("providerURL", providerURL).Msg("Failed to create OIDC provider")
 		return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
 	}
 	config := &oidc.Config{
@@ -91,7 +90,7 @@ func (s *OAuthService) VerifyToken(ctx context.Context, oauth2Token *oauth2.Toke
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		log.Println("ID token missing from token response")
+		log.Warn().Msg("ID token missing from OAuth token response")
 		return nil, errors.New("id_token missing from response")
 	}
 
@@ -99,11 +98,10 @@ func (s *OAuthService) VerifyToken(ctx context.Context, oauth2Token *oauth2.Toke
 
 	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		log.Printf("Failed to verify ID token: %v\n", err)
+		log.Warn().Err(err).Msg("Failed to verify ID token")
 		return nil, fmt.Errorf("failed to verify ID token: %w", err)
 	}
-
-	log.Printf("ID Token Verified Successfully! Issuer: %s, Subject: %s\n", idToken.Issuer, idToken.Subject)
+	log.Info().Str("issuer", idToken.Issuer).Str("subject", idToken.Subject).Msg("ID Token Verified Successfully")
 
 	return idToken, nil
 }
@@ -119,33 +117,34 @@ func (s *OAuthService) ProcessUserInfo(ctx context.Context, oauth2token *oauth2.
 
 	resp, err := client.Get(s.api)
 	if err != nil {
-		log.Printf("Error fetching user info from Graph API: %v\n", err)
+		log.Error().Err(err).Str("api", s.api).Msg("Error fetching user info from Graph API")
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		log.Printf("Error response from Graph API: Status=%d, Body=%s\n", resp.StatusCode, string(bodyBytes))
+		log.Warn().Int("statusCode", resp.StatusCode).Str("body", string(bodyBytes)).Str("api", s.api).Msg("Error response from Graph API")
 		return nil, fmt.Errorf("graph API request failed with status: %s", resp.Status)
 	}
 
 	var user models.OAuthUser
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		log.Printf("Error decoding user info JSON: %v\n", err)
+		log.Error().Err(err).Msg("Error decoding user info JSON from Graph API")
 		return nil, fmt.Errorf("failed to decode user info: %w", err)
 	}
 	user.Audience = idToken.Audience[0]
 	user.Subject = idToken.Subject
 
-	authId := user.Audience + ":" + user.Subject // aud:sub
+	authID := user.Audience + ":" + user.Subject // aud:sub
 	authExtrasJSON, err := json.Marshal(map[string]string{"oid": user.ID})
 	if err != nil {
-		log.Printf("Error marshaling auth extras: %v\n", err)
+		log.Error().Err(err).Str("authId", authID).Msg("Error marshaling auth extras for OAuth user")
 		return nil, fmt.Errorf("failed to marshal auth extras: %w", err)
 	}
-	if _, err := s.userRepo.GetUserInfoByAuthID(context.Background(), authId); err != nil {
-		s.userRepo.CreateUser(context.Background(), authId, user.DisplayName, tokenProvider, string(authExtrasJSON))
+	if _, err := s.userRepo.GetUserInfoByAuthID(context.Background(), authID); err != nil {
+		log.Info().Str("authId", authID).Str("displayName", user.DisplayName).Str("provider", tokenProvider).Msg("User not found by OAuth ID, creating new user.")
+		s.userRepo.CreateUser(context.Background(), authID, user.DisplayName, tokenProvider, string(authExtrasJSON))
 	}
 
 	return &user, nil

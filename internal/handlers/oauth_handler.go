@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 )
 
 // OAuthHandler handles authentication-related HTTP requests
@@ -42,7 +42,7 @@ func (h *OAuthHandler) Login(c echo.Context) error {
 	c.SetCookie(cookie)
 
 	authURL := h.OAuthService.GetAuthCodeURL(state)
-	log.Printf("Redirecting user to: %s\n", authURL)
+	log.Info().Str("url", authURL).Msg("Redirecting user for OAuth login")
 
 	return c.Redirect(http.StatusTemporaryRedirect, authURL)
 }
@@ -68,42 +68,42 @@ func (h *OAuthHandler) Callback(c echo.Context) error {
 	c.SetCookie(clearCookie)
 
 	if queryState == "" {
-		log.Println("Callback error: state parameter missing in callback URL")
+		log.Warn().Msg("Callback error: state parameter missing in callback URL")
 		return echo.NewHTTPError(http.StatusBadRequest, "State parameter missing")
 	}
 	if cookieStateValue == "" { // Check if cookie was missing or value was empty
-		log.Println("Callback error: state cookie missing or empty")
+		log.Warn().Msg("Callback error: state cookie missing or empty")
 		return echo.NewHTTPError(http.StatusBadRequest, "State cookie missing or expired")
 	}
 	if queryState != cookieStateValue {
-		log.Printf("Callback error: state mismatch. Query='%s', Cookie='%s'\n", queryState, cookieStateValue)
+		log.Warn().Str("queryState", queryState).Str("cookieState", cookieStateValue).Msg("Callback error: state mismatch")
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid state parameter")
 	}
-	log.Println("State verification successful")
+	log.Info().Msg("State verification successful")
 
 	code := c.QueryParam("code")
 	if code == "" {
 		errorDesc := c.QueryParam("error_description")
-		log.Printf("Callback error: authorization code missing. OAuth error: %s, Description: %s\n", c.QueryParam("error"), errorDesc)
+		log.Warn().Str("oauthError", c.QueryParam("error")).Str("errorDescription", errorDesc).Msg("Callback error: authorization code missing")
 		// Return a generic message to the client, but log the specific OAuth error
 		return echo.NewHTTPError(http.StatusBadRequest, "Authorization code missing or error occurred during login.")
 	}
-	log.Println("Authorization code received")
+	log.Info().Msg("Authorization code received")
 
 	token, err := h.OAuthService.ExchangeCode(c.Request().Context(), code) // Use request context
 	if err != nil {
-		log.Printf("Error exchanging code in callback: %v\n", err)
+		log.Error().Err(err).Msg("Error exchanging code in callback")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to exchange authorization code for token")
 	}
-	log.Println("Token exchange successful")
+	log.Info().Msg("Token exchange successful")
 
 	// --- Fetch User Info ---
 	user, err := h.OAuthService.ProcessUserInfo(c.Request().Context(), token, "MICROSOFT") // Use request context
 	if err != nil {
-		log.Printf("Error fetching user info in callback: %v\n", err)
+		log.Error().Err(err).Msg("Error fetching user info in callback")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to fetch user information")
 	}
-	log.Printf("Successfully logged in user: %s (%s)\n", user.DisplayName, user.Email)
+	log.Info().Str("displayName", user.DisplayName).Str("email", user.Email).Msg("Successfully logged in user via OAuth callback")
 
 	// For this example, just return the user info as JSON
 	return c.JSON(http.StatusOK, echo.Map{
@@ -117,28 +117,28 @@ func (h *OAuthHandler) Callback(c echo.Context) error {
 func (h *OAuthHandler) MobileLogin(c echo.Context) error {
 	var req models.MobileLoginRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("MobileLogin error: Failed to parse request body: %v\n", err)
+		log.Warn().Err(err).Msg("MobileLogin error: Failed to parse request body")
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
 	if req.Code == "" || req.CodeVerifier == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "Missing code or code_verifier")
 	}
-	log.Printf("MobileLogin: Received code and verifier.")
+	log.Info().Str("authProvider", req.AuthProvider).Msg("MobileLogin: Received code and verifier.")
 
 	oauth2token, err := h.OAuthService.ExchangeCodeMobile(c.Request().Context(), req.Code, req.CodeVerifier, req.AuthProvider)
 	if err != nil {
-		log.Printf("MobileLogin error: Failed to exchange code: %v\n", err)
+		log.Error().Err(err).Str("authProvider", req.AuthProvider).Msg("MobileLogin error: Failed to exchange code")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to authenticate with provider")
 	}
-	log.Println("MobileLogin: Token exchange successful.")
+	log.Info().Str("authProvider", req.AuthProvider).Msg("MobileLogin: Token exchange successful.")
 
 	user, err := h.OAuthService.ProcessUserInfo(c.Request().Context(), oauth2token, req.AuthProvider)
 	if err != nil {
-		log.Printf("MobileLogin error: Failed to fetch user info: %v\n", err)
+		log.Error().Err(err).Str("authProvider", req.AuthProvider).Msg("MobileLogin error: Failed to fetch user info")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to fetch user information")
 	}
-	log.Printf("MobileLogin: Successfully logged in user: %s (%s)\n", user.DisplayName, user.Email)
+	log.Info().Str("displayName", user.DisplayName).Str("email", user.Email).Str("authProvider", req.AuthProvider).Msg("MobileLogin: Successfully logged in user")
 
 	return c.JSON(http.StatusCreated, echo.Map{
 		"message": "Login successful!",
@@ -154,7 +154,7 @@ func (h *OAuthHandler) GetUserInfoHandler(c echo.Context) error {
 
 	req, err := http.NewRequest("GET", "https://graph.microsoft.com/oidc/userinfo", nil)
 	if err != nil {
-		log.Printf("Error creating UserInfo request: %v", err)
+		log.Error().Err(err).Msg("Error creating UserInfo request")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Could not create request to userinfo endpoint")
 	}
 
@@ -164,7 +164,7 @@ func (h *OAuthHandler) GetUserInfoHandler(c echo.Context) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Error calling UserInfo endpoint: %v", err)
+		log.Error().Err(err).Msg("Error calling UserInfo endpoint")
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "Failed to call userinfo endpoint")
 	}
 	defer resp.Body.Close()
@@ -172,23 +172,22 @@ func (h *OAuthHandler) GetUserInfoHandler(c echo.Context) error {
 	if resp.StatusCode != http.StatusOK {
 		var errorBody map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&errorBody); err == nil {
-			log.Printf("UserInfo endpoint returned status %d: %v", resp.StatusCode, errorBody)
+			log.Warn().Int("statusCode", resp.StatusCode).Interface("errorBody", errorBody).Msg("UserInfo endpoint returned non-OK status with body")
 			return echo.NewHTTPError(resp.StatusCode, echo.Map{
 				"error":            "Error from userinfo endpoint",
 				"status_code":      resp.StatusCode,
 				"ms_error_details": errorBody,
 			})
 		}
-		log.Printf("UserInfo endpoint returned status %d", resp.StatusCode)
+		log.Warn().Int("statusCode", resp.StatusCode).Msg("UserInfo endpoint returned non-OK status")
 		return echo.NewHTTPError(resp.StatusCode, echo.Map{
 			"error":       "Error from userinfo endpoint",
 			"status_code": resp.StatusCode,
 		})
 	}
-
 	var userInfo map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		log.Printf("Error decoding UserInfo response: %v", err)
+		log.Error().Err(err).Msg("Error decoding UserInfo response")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Could not decode userinfo response")
 	}
 

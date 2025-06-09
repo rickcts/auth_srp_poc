@@ -55,3 +55,8 @@ func (m *MockUserRepository) DeleteUser(ctx context.Context, authID string) erro
 	args := m.Called(ctx, authID)
 	return args.Error(0)
 }
+
+func (m *MockUserRepository) CreateUserAuthEvent(ctx context.Context, host string, errorCode int) error {
+	args := m.Called(ctx, host, errorCode)
+	return args.Error(0)
+}

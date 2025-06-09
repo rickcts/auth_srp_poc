@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/ent"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/config"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/handlers"
+	applogger "github.com/SimpnicServerTeam/scs-aaa-server/internal/logger"
 	ent_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/ent"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/memory"
 	redis_repo "github.com/SimpnicServerTeam/scs-aaa-server/internal/repository/redis"
@@ -19,6 +19,7 @@ import (
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/server"
 	"github.com/SimpnicServerTeam/scs-aaa-server/internal/service"
 	"github.com/redis/go-redis/v9"
+	zlog "github.com/rs/zerolog/log" // zerolog's global logger
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -29,16 +30,16 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	applogger.Init(cfg.App.LogLevel, cfg.App.Env)
 	redisClient := redis.NewClient(cfg.RedisSettings)
-
 	entClient, err := ent.Open(cfg.Database.DatabaseDriver, cfg.Database.DSN)
 	if err != nil {
-		log.Fatalf("failed opening connection to postgres: %v", err)
+		zlog.Fatal().Err(err).Msg("Failed opening connection to database")
 	}
 	defer entClient.Close()
 	// Run the auto migration tool.
 	if err := entClient.Schema.Create(context.Background()); err != nil {
-		log.Fatalf("failed creating schema resources: %v", err)
+		zlog.Fatal().Err(err).Msg("Failed creating schema resources")
 	}
 
 	sessionRepo := redis_repo.NewRedisSessionRepository(redisClient)
@@ -51,7 +52,7 @@ func main() {
 	sessionService := service.NewSessionService(sessionRepo, userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
 
-	app := server.New()
+	app := server.New(zlog.Logger)
 
 	router.SetupUserRoutes(app, handlers.NewUserHandler(tokenService, sessionService, userService), cfg)
 	router.SetupSRPRoutes(app, handlers.NewSRPAuthHandler(
@@ -73,19 +74,19 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		log.Printf("Server starting on port %s...", cfg.App.Port)
-		if err := app.Start(":" + cfg.App.Port); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", err)
+		zlog.Info().Str("port", cfg.App.Port).Msg("Server starting")
+		if err := app.Start(":" + cfg.App.Port); err != nil && err != http.ErrServerClosed {
+			zlog.Fatal().Err(err).Msg("Failed to start server")
 		}
 	}()
 
 	<-quit
-	log.Println("Shutting down server...")
+	zlog.Info().Msg("Shutting down server...")
 
 	if err := app.Shutdown(context.Background()); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		zlog.Fatal().Err(err).Msg("Server forced to shutdown")
 	}
 
-	log.Println("Server stopped gracefully.")
+	zlog.Info().Msg("Server stopped gracefully.")
 
 }

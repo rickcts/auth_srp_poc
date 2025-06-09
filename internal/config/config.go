@@ -3,11 +3,13 @@ package config
 import (
 	"crypto"
 	"fmt"
-	"log"
+
+	stdlog "log"
 	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"github.com/tadglines/go-pkgs/crypto/srp"
 	"golang.org/x/oauth2"
@@ -19,6 +21,8 @@ type APPConfig struct {
 	Port            string
 	JWTSecret       string
 	StateCookieName string
+	LogLevel        string
+	Env             string // e.g., "development", "production"
 }
 
 type SRPConfig struct {
@@ -92,6 +96,8 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("app.port", "8080")
 	viper.SetDefault("app.jwtSecret", "a_very_secret_key_change_me_in_config_yaml")
 	viper.SetDefault("app.stateCookieName", "my_oauth_state_cookie")
+	viper.SetDefault("app.logLevel", "info")
+	viper.SetDefault("app.env", "development")
 
 	viper.SetDefault("srp.group", "rfc5054.4096")
 	viper.SetDefault("srp.authStateExpiry", "5m")
@@ -129,29 +135,29 @@ func LoadConfig() (*Config, error) {
 	// Load configuration
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Println("Config file (config.yaml) not found, using defaults and environment variables.")
+			stdlog.Println("Config file (config.yaml) not found, using defaults and environment variables.")
+
 		} else {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
+			return nil, err // Return the original error
 		}
 	}
 
 	// JWT Secret
 	jwtSecret := viper.GetString("app.jwtSecret")
 	if jwtSecret == "a_very_secret_key_change_me_in_config_yaml" || jwtSecret == "a_very_secret_key_change_me" {
-		log.Println("Warning: Using default JWT secret. Set app.jwtSecret in your config.yaml or the JWT_SECRET environment variable.")
+		log.Warn().Msg("Using default JWT secret. Set app.jwtSecret in your config.yaml or the JWT_SECRET environment variable.")
 	}
 
 	// SRP Configuration
 	srpGroup := viper.GetString("srp.group")
 	if _, err := srp.GetGroup(srpGroup); err != nil {
-		originalGroup := srpGroup
 		srpGroup = "rfc5054.4096"
-		log.Printf("Invalid SRP group '%s' in srp.group, defaulting to '%s'", originalGroup, srpGroup)
+		log.Warn().Str("originalGroup", viper.GetString("srp.group")).Str("defaultGroup", srpGroup).Msg("Invalid SRP group in srp.group, defaulting")
 	}
 
 	srpAuthStateExpiryDuration := viper.GetDuration("srp.authStateExpiry")
 	if srpAuthStateExpiryDuration <= 0 {
-		log.Printf("Invalid or missing srp.authStateExpiry, defaulting to 5m.")
+		log.Warn().Msg("Invalid or missing srp.authStateExpiry, defaulting to 5m.")
 		srpAuthStateExpiryDuration = 5 * time.Minute
 	}
 
@@ -165,21 +171,20 @@ func LoadConfig() (*Config, error) {
 	case "SHA512":
 		hashingAlgorithm = crypto.SHA512
 	default:
-		originalAlgo := hashingAlgorithmStr
 		hashingAlgorithm = crypto.SHA512
-		log.Printf("Invalid hashing algorithm '%s' in srp.hashingAlgorithm, defaulting to SHA512", originalAlgo)
+		log.Warn().Str("originalAlgo", hashingAlgorithmStr).Msg("Invalid hashing algorithm in srp.hashingAlgorithm, defaulting to SHA512")
 	}
 
 	// Token Configuration
 	accessTokenDuration := viper.GetDuration("sessionConfig.accessTokenDuration")
 	if accessTokenDuration <= 0 {
-		log.Printf("Invalid or missing sessionConfig.accessTokenDuration, defaulting to 168h (7 days)")
+		log.Warn().Msg("Invalid or missing sessionConfig.accessTokenDuration, defaulting to 1h")
 		accessTokenDuration = 1 * time.Hour
 	}
 
 	validationTokenExpiry := viper.GetDuration("security.validationDuration")
 	if validationTokenExpiry <= 0 {
-		log.Printf("Invalid or missing PASSWORD_RESET_TOKEN_EXPIRY, defaulting to 15m.")
+		log.Warn().Msg("Invalid or missing security.validationDuration, defaulting to 15m.")
 		validationTokenExpiry = 15 * time.Minute
 	}
 
@@ -212,9 +217,12 @@ func LoadConfig() (*Config, error) {
 
 	return &Config{
 		App: APPConfig{
-			Name:      viper.GetString("app.name"),
-			Port:      viper.GetString("app.port"),
-			JWTSecret: jwtSecret,
+			Name:            viper.GetString("app.name"),
+			Port:            viper.GetString("app.port"),
+			JWTSecret:       jwtSecret,
+			LogLevel:        viper.GetString("app.logLevel"),
+			Env:             viper.GetString("app.env"),
+			StateCookieName: viper.GetString("app.stateCookieName"),
 		},
 		SRP: SRPConfig{
 			Group:            srpGroup,
