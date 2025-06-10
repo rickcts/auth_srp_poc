@@ -68,15 +68,15 @@ func NewSMTPEmailService(smtpCfg *config.SmtpConfig) *SMTPEmailService {
 
 // SendPasswordResetEmail sends a password reset email.
 // The `resetCode` is the 6-digit code. `resetContextInfo` can be used for branding or instructions if needed, otherwise can be empty.
-func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, resetContextInfo string) error {
+func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, appName string) error {
 	if s.cfg.Host == "" || s.cfg.User == "" || s.cfg.Port == "" {
 		log.Error().Str("toEmail", toEmail).Msg("SMTP host, user, or port not configured. Cannot send password reset email.")
 		return fmt.Errorf("SMTP service not fully configured (host, user, or port missing)")
 	}
 
-	subject := "Password Reset Request"
+	subject := fmt.Sprintf("Activate Your Account for %s", appName)
 	// resetContextInfo could be your app name or a brief instruction.
-	body := fmt.Sprintf("Hello,\n\nYou requested a password reset for %s.\n\nYour 6-digit reset code is: %s\n\nThis code will expire in 5 minutes.\n\nIf you did not request this, please ignore this email.", resetContextInfo, resetCode)
+	body := fmt.Sprintf("Hello,\n\nYou requested a password reset for %s.\n\nYour 6-digit reset code is: %s\n\nThis code will expire in 5 minutes.\n\nIf you did not request this, please ignore this email.", appName, resetCode)
 	date := time.Now().UTC().Format(time.RFC1123Z)
 	smtpAddr := s.cfg.Host + ":" + s.cfg.Port
 

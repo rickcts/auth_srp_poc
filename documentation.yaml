@@ -367,13 +367,6 @@ components:
           example: "Login successful!"
         user:
           $ref: '#/components/schemas/OAuthUser'
-          # You can add an example directly under 'user' if you want to override/provide a specific example for this schema instance
-          example:
-            id: "oauth_user_specific_id"
-            displayName: "Specific OAuth User"
-            mail: "specific.oauth.user@example.com"
-            aud: "specific_client"
-            sub: "specific_subject"
 
     LogoutAllSuccessResponse:
       type: object

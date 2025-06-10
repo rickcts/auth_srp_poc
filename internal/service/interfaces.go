@@ -49,7 +49,7 @@ type SRPAuthGenerator interface {
 // EmailService defines an interface for sending emails.
 type EmailService interface {
 	// SendPasswordResetEmail sends an email with a reset code.
-	SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, resetContextInfo string) error
+	SendPasswordResetEmail(ctx context.Context, toEmail, resetCode, appName string) error
 	SendActivationEmail(ctx context.Context, toEmail, activationCode, appName string) error
 }
 
