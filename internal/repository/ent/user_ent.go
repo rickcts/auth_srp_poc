@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/goccy/go-json"
+	"github.com/rs/zerolog/log"
 
 	"github.com/SimpnicServerTeam/scs-aaa-server/ent"
 	"github.com/SimpnicServerTeam/scs-aaa-server/ent/user"
@@ -62,7 +63,7 @@ func (r *EntUserRepository) CreateUser(
 		SetUserID(user.ID).
 		SaveX(ctx)
 
-	fmt.Printf("User registered: %v\n", userAuth.ID)
+	log.Info().Str("AuthID", userAuth.AuthID).Int64("UserID", user.ID).Msg("User created successfully")
 	return nil
 }
 
@@ -164,9 +165,10 @@ func (r *EntUserRepository) DeleteUser(ctx context.Context, authID string) error
 	return nil
 }
 
-func (r *EntUserRepository) CreateUserAuthEvent(ctx context.Context, host string, errorCode int) error {
+func (r *EntUserRepository) CreateUserAuthEvent(ctx context.Context, userID int64, host string, errorCode int) error {
 	_, err := r.client.UserAuthEvent.
 		Create().
+		SetUserID(userID).
 		SetHost(host).
 		SetErrorCode(errorCode).
 		Save(ctx)

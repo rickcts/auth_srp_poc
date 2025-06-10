@@ -381,6 +381,7 @@ func setupVerifyClientProofData(t *testing.T) verifyClientProofTestData {
 
 func TestAuthService_VerifyClientProof(t *testing.T) {
 	ctx := context.Background()
+	hostIP := "127.0.0.1"
 
 	t.Run("Success", func(t *testing.T) {
 		deps := setupSRPAuthServiceTest(t)
@@ -401,7 +402,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockSessionRepo.On("StoreSession", ctx, mock.AnythingOfType("*models.Session")).Return(nil).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
+		resp, err := deps.authService.VerifyClientProof(ctx, data.req, hostIP)
 
 		// Assert
 		require.NoError(t, err)
@@ -427,7 +428,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("GetAuthState", data.authID).Return(nil, repository.ErrStateNotFound).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
+		resp, err := deps.authService.VerifyClientProof(ctx, data.req, hostIP)
 
 		// Assert
 		require.Error(t, err)
@@ -452,7 +453,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("DeleteAuthState", data.authID).Return(nil).Once() // Called on M1 verification failure
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, badReq)
+		resp, err := deps.authService.VerifyClientProof(ctx, badReq, hostIP)
 
 		// Assert
 		require.Error(t, err)
@@ -475,7 +476,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, badReq)
+		resp, err := deps.authService.VerifyClientProof(ctx, badReq, hostIP)
 
 		// Assert
 		require.Error(t, err)
@@ -507,7 +508,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockTokenSvc.On("GenerateToken", data.authID).Return("", time.Time{}, tokenErr).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
+		resp, err := deps.authService.VerifyClientProof(ctx, data.req, hostIP)
 
 		// Assert
 		require.Error(t, err)
@@ -532,7 +533,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&data.validState, nil).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, badReq)
+		resp, err := deps.authService.VerifyClientProof(ctx, badReq, hostIP)
 
 		// Assert
 		require.Error(t, err)
@@ -555,7 +556,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockStateRepo.On("GetAuthState", data.authID).Return(&badState, nil).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(context.Background(), data.req)
+		resp, err := deps.authService.VerifyClientProof(context.Background(), data.req, hostIP)
 
 		// Assert
 		require.Error(t, err)
@@ -594,7 +595,7 @@ func TestAuthService_VerifyClientProof(t *testing.T) {
 		deps.mockSessionRepo.On("StoreSession", ctx, mock.AnythingOfType("*models.Session")).Return(nil).Once()
 
 		// Execute
-		resp, err := deps.authService.VerifyClientProof(ctx, data.req)
+		resp, err := deps.authService.VerifyClientProof(ctx, data.req, hostIP)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)

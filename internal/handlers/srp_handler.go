@@ -154,8 +154,9 @@ func (h *SRPAuthHandler) AuthStep2(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
+	hostIP := c.RealIP()
 
-	resp, err := h.SRPAuthService.VerifyClientProof(ctx, *req)
+	resp, err := h.SRPAuthService.VerifyClientProof(ctx, *req, hostIP)
 	if err != nil {
 		if errors.Is(err, repository.ErrStateNotFound) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Authentication session expired or invalid")

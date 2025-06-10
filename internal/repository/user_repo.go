@@ -33,7 +33,7 @@ type UserRepository interface {
 
 	DeleteUser(ctx context.Context, authID string) error
 
-	CreateUserAuthEvent(ctx context.Context, host string, errorCode int) error
+	CreateUserAuthEvent(ctx context.Context, userID int64, host string, errorCode int) error
 }
 
 // Common errors

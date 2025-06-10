@@ -52,7 +52,7 @@ func NewSRPAuthService(
 		stateRepo:             stateRepo,
 		sessionRepo:           sessionRepo,
 		tokenSvc:              tokenSvc,
-		verificationTokenRepo: verificationTokenRepo, // Changed
+		verificationTokenRepo: verificationTokenRepo,
 		emailSvc:              emailSvc,
 		srpGroup:              cfg.SRP.Group,
 		cfg:                   cfg,
@@ -105,7 +105,6 @@ func (s *SRPAuthService) Register(ctx context.Context, req models.SRPRegisterReq
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to register user")
 		return fmt.Errorf("failed to register user: %w", err)
 	}
-	log.Info().Str("authId", req.AuthID).Msg("User registered successfully")
 	return nil
 }
 
@@ -168,13 +167,21 @@ func (s *SRPAuthService) ComputeB(ctx context.Context, req models.AuthStep1Reque
 }
 
 // VerifyClientProof handles SRP step 2 (Client -> Server: A, M1) and returns Step 3 info (Server -> Client: M2)
-func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error) {
+func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request, hostIP string) (*models.AuthStep3Response, error) {
 	log.Info().Str("authId", req.AuthID).Msg("SRP VerifyClientProof (Step 2) request received")
+
+	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, req.AuthID)
+	if err != nil {
+		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to get user info after SRP auth")
+		return nil, fmt.Errorf("failed to get user info: %w", err)
+	}
+	userID := userInfo.ID
 
 	// 1. Retrieve stored state (secret 'b'/'secret2', verifier 'V')
 	session, err := s.stateRepo.GetAuthState(ctx, req.AuthID)
 	if err != nil {
 		log.Warn().Err(err).Str("authId", req.AuthID).Msg("Failed to retrieve auth state for SRP Step 2")
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 404)
 		// s.stateRepo.DeleteAuthState(req.AuthID)                                    // Uncomment if needed
 		return nil, fmt.Errorf("failed to retrieve authentication state: %w", err) // Don't leak internal state details
 	}
@@ -183,6 +190,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	bytesA, err := hex.DecodeString(req.ClientA)
 	if err != nil || len(bytesA) == 0 { // Also check for empty result
 		log.Warn().Err(err).Str("authId", req.AuthID).Str("clientA", req.ClientA).Msg("Invalid client public ephemeral 'A' format for SRP Step 2")
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 400)
 		return nil, fmt.Errorf("invalid client A format: %w", err)
 	}
 	log.Debug().Str("authId", req.AuthID).Msg("Decoded ClientA for SRP Step 2")
@@ -191,6 +199,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	ClientM1, err := hex.DecodeString(req.ClientProofM1)
 	if err != nil || len(ClientM1) == 0 { // Also check for empty result
 		log.Warn().Err(err).Str("authId", req.AuthID).Str("clientM1", req.ClientProofM1).Msg("Invalid client proof 'M1' format for SRP Step 2")
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 401)
 		return nil, fmt.Errorf("invalid client proof M1 format: %w", err)
 	}
 	log.Debug().Str("authId", req.AuthID).Msg("Decoded ClientProofM1 for SRP Step 2")
@@ -199,6 +208,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	server := session.Server
 	if server == nil {
 		log.Error().Str("authId", req.AuthID).Msg("Failed to re-create SRP server instance (nil server in state) for SRP Step 2")
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 500)
 		return nil, fmt.Errorf("failed to create SRP server instance")
 	}
 	log.Debug().Str("authId", req.AuthID).Msg("Re-created SRP server instance for SRP Step 2")
@@ -207,6 +217,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	k, err := server.ComputeKey(bytesA)
 	if err != nil {
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to compute key for SRP Step 2")
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 500)
 		return nil, fmt.Errorf("failed to compute key: %w", err)
 	}
 	log.Debug().Str("authId", req.AuthID).Str("key", hex.EncodeToString(k)).Msg("Computed key for SRP Step 2")
@@ -215,6 +226,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	if !isValid {
 		log.Warn().Str("authId", req.AuthID).Msg("Client proof M1 verification failed for SRP Step 2")
 		// Clean up state after failed attempt
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 401)
 		s.stateRepo.DeleteAuthState(ctx, req.AuthID)
 		return nil, ErrSRPAuthenticationFailed
 	}
@@ -227,12 +239,6 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 		log.Debug().Str("authId", req.AuthID).Msg("Deleted auth state after successful SRP auth")
 	}
 
-	userInfo, err := s.userRepo.GetUserInfoByAuthID(ctx, req.AuthID)
-	if err != nil {
-		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to get user info after SRP auth")
-		return nil, fmt.Errorf("failed to get user info: %w", err)
-	}
-
 	// Generate session token
 	sessionTokenString, sessionTokenExpiry, err := s.tokenSvc.GenerateToken(req.AuthID)
 	if err != nil {
@@ -243,7 +249,8 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 	// Create and store the user session
 	sessionRecord := &models.Session{
 		SessionID: sessionTokenString,
-		UserID:    userInfo.ID,
+		UserID:    userID,
+		Host:      hostIP,
 		AuthID:    req.AuthID,
 		Expiry:    sessionTokenExpiry,
 		CreatedAt: time.Now().UTC(),
@@ -251,6 +258,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 
 	if err := s.sessionRepo.StoreSession(ctx, sessionRecord); err != nil {
 		log.Error().Err(err).Str("authId", req.AuthID).Msg("Failed to store session token after SRP auth")
+		s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 401)
 		return nil, fmt.Errorf("failed to store session token: %w", err)
 	}
 	log.Info().Str("authId", req.AuthID).Time("sessionExpiry", sessionRecord.Expiry).Msg("Session token generated and stored after SRP auth")
@@ -261,6 +269,7 @@ func (s *SRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthS
 		SessionToken:  sessionTokenString,
 		SessionExpiry: sessionTokenExpiry,
 	}
+	s.userRepo.CreateUserAuthEvent(ctx, userID, hostIP, 200)
 	log.Info().Str("authId", req.AuthID).Msg("SRP VerifyClientProof (Step 2) successful, returning ServerProofM2 and session token")
 	return response, nil
 }

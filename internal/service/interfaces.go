@@ -30,7 +30,7 @@ type SRPAuthGenerator interface {
 	// ComputeB handles SRP step 1 (Server -> Client: salt, B)
 	ComputeB(ctx context.Context, req models.AuthStep1Request) (*models.AuthStep1Response, error)
 	// VerifyClientProof handles SRP step 2 (Client -> Server: A, M1) and returns Step 3 info (Server -> Client: M2)
-	VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error)
+	VerifyClientProof(ctx context.Context, req models.AuthStep2Request, hostIP string) (*models.AuthStep3Response, error)
 	// InitiatePasswordReset starts the password reset flow for a user.
 	InitiatePasswordReset(ctx context.Context, req models.InitiatePasswordResetRequest) error
 	// ValidatePasswordResetToken checks if a password reset token is valid without consuming it.

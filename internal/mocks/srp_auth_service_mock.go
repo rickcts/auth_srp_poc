@@ -28,7 +28,7 @@ func (m *MockSRPAuthService) ComputeB(ctx context.Context, req models.AuthStep1R
 	return resp, args.Error(1)
 }
 
-func (m *MockSRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request) (*models.AuthStep3Response, error) {
+func (m *MockSRPAuthService) VerifyClientProof(ctx context.Context, req models.AuthStep2Request, hostIP string) (*models.AuthStep3Response, error) {
 	args := m.Called(req)
 	resp, _ := args.Get(0).(*models.AuthStep3Response)
 	return resp, args.Error(1)
