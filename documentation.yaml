@@ -630,7 +630,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
-                message: "AuthID is required"
+                message: "AuthID (email) is required"
         '409':
           description: Conflict. This email is already in use.
           content:
@@ -744,6 +744,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
                 message: "User is already activated"
+        '429':
+          description: Too Many Requests. The user has requested an activation email too recently.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "too many requests, please try again later"
         '500':
           description: Internal Server Error. Failed to send activation email.
           content:
@@ -946,6 +954,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
                 message: "AuthID is required for password reset initiation."
+        '429':
+          description: Too Many Requests. The user has requested a password reset too recently.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "too many requests, please try again later"
         '500':
           description: Internal Server Error. Password reset initiation failed.
           content:
@@ -1187,14 +1203,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                stateMismatch:
-                  summary: State Mismatch Error
+                missingQueryState:
+                  summary: State Parameter Missing in Query
                   value:
-                    message: "CSRF state mismatch or invalid state."
-                missingCode:
+                    message: "State parameter missing"
+                missingStateCookie:
+                  summary: State Cookie Missing or Expired
+                  value:
+                    message: "State cookie missing or expired"
+                missingAuthCode:
                   summary: Missing Authorization Code Error
                   value:
-                    message: "Authorization code is missing."
+                    message: "Authorization code missing or error occurred during login."
         '401':
           description: Unauthorized. Invalid state parameter.
           content:
@@ -1202,15 +1222,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
-                message: "Unauthorized: Invalid state parameter."
+                message: "Invalid state parameter" # Matched to handler
         '500':
           description: Internal Server Error. Failed to exchange code or fetch user info.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                message: "Internal server error during OAuth callback process."
+              examples: # Added specific examples for 500 errors
+                exchangeCodeFailure:
+                  summary: Token Exchange Failure
+                  value:
+                    message: "Failed to exchange authorization code for token"
+                fetchUserInfoFailure:
+                  summary: User Info Fetch Failure
+                  value:
+                    message: "Failed to fetch user information"
 
   /api/auth/oauth/microsoft/mobile: # Documenting as POST based on handler logic
     post:
@@ -1249,13 +1276,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                message: "Invalid request: code or codeVerifier is missing."
+              examples: # Updated and added examples to match handler
+                invalidRequestBody:
+                  summary: Invalid Request Body
+                  value:
+                    message: "Invalid request body"
+                missingCodeOrVerifier:
+                  summary: Missing Code or Code Verifier
+                  value:
+                    message: "Missing code or code_verifier"
         '500':
           description: Internal Server Error. Failed to authenticate with provider or fetch user info.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                message: "Internal server error during mobile OAuth login."
+              examples: # Added specific examples for 500 errors
+                authenticationFailure:
+                  summary: Provider Authentication Failure
+                  value:
+                    message: "Failed to authenticate with provider"
+                fetchUserInfoFailure:
+                  summary: User Info Fetch Failure
+                  value:
+                    message: "Failed to fetch user information"

@@ -268,9 +268,6 @@ func (h *SRPAuthHandler) InitiatePasswordChangeVerification(c echo.Context) erro
 	ctx := c.Request().Context()
 	resp, err := h.SRPAuthService.InitiatePasswordChangeVerification(ctx, authID)
 	if err != nil {
-		if errors.Is(err, repository.ErrTooManyRequests) {
-			return echo.NewHTTPError(http.StatusTooManyRequests, err.Error())
-		}
 		log.Error().Err(err).Str("authId", authID).Msg("Failed to initiate password change verification")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to initiate password change verification")
 	}
